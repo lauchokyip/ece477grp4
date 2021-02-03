@@ -5,5 +5,8 @@
 * Devansh Rathi
 * [Chok Yip Lau](https://github.com/lauchokyip)
 
+## Homework 
+* [Functional Specification](ECE477HW2.pdf)
+
 ### Functional Block Diagram
 ![Functional Block Diagram](image1.png)
