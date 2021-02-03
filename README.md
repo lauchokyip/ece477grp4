@@ -1,9 +1,9 @@
 # ece477grp4 - Virtual Queue
 ## Team members
 * [Nathan Pietraszak](https://github.com/natepzak) (Team Lead)
-* Aidan Connor Roy
-* [Devansh Rathi](https://github.com/DevanshRathi1)
-* [Chok Yip Lau](https://github.com/lauchokyip)
+* Aidan Connor Roy (Hardware Lead)
+* [Devansh Rathi](https://github.com/DevanshRathi1) (Software Lead)
+* [Chok Yip Lau](https://github.com/lauchokyip) (Systems Lead)
 
 ### Functional Block Diagram
 ![Functional Block Diagram](image1.png)
