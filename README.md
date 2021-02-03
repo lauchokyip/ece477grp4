@@ -2,7 +2,7 @@
 ## Team members
 * [Nathan Pietraszak](https://github.com/natepzak) (Team Lead)
 * Aidan Connor Roy
-* Devansh Rathi
+* [Devansh Rathi](https://github.com/DevanshRathi1)
 * [Chok Yip Lau](https://github.com/lauchokyip)
 
 ### Functional Block Diagram
