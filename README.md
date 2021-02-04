@@ -6,7 +6,7 @@
 * [Chok Yip Lau](https://github.com/lauchokyip) (Systems Lead)
 
 ## Homework 
-* [Functional Specification](ECE477HW2.pdf)
+* [Functional Specification](HW/ECE477HW2.pdf)
 
 ### Functional Block Diagram
 ![Functional Block Diagram](image1.png)
