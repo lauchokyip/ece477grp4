@@ -7,6 +7,10 @@
 
 ## Homework 
 * [Functional Specification](HW/ECE477HW2.pdf)
+* [Software Overview](HW/ECE477HW3.pdf)
+* [Component Analysis](HW/ECE477HW4.pdf)
 
 ### Functional Block Diagram
 ![Functional Block Diagram](image1.png)
+
+
