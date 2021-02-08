@@ -7,6 +7,15 @@
 
 ## Homework 
 * [Functional Specification](HW/ECE477HW2.pdf)
+* [Software Overview](HW/ECE477HW3.pdf)
+* [Component Analysis](HW/ECE477HW4.pdf)
+
+### STM32L4 Documentation
+* [Programming Manual](programmingManual.pdf)
+* [Reference Manual](referenceManual.pdf)
 
 ### Functional Block Diagram
 ![Functional Block Diagram](image1.png)
+
+### References
+* [STM32L4 Documentation website](https://www.st.com/en/microcontrollers-microprocessors/stm32l476vg.html#documentation)
