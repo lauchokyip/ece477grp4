@@ -63,8 +63,11 @@ int return_true_or_false_from_str(char *str)
 /**
  * fill_in_struct_from_json take in JSON string and fills all the information
  * from the JSON message to a struct
+ * 
+ * return 1 if fail
+ * return 0 if success
  */
-from_server_msg* fill_in_struct_from_json(char *json_msg)
+int fill_in_struct_from_json(char *json_msg, from_server_msg* new_server_msg)
 {
     int i;
     int r;
@@ -73,22 +76,18 @@ from_server_msg* fill_in_struct_from_json(char *json_msg)
     jsmntok_t token[1024]; /* We expect no more than 1024 tokens */
     char temp_str[8];
 
-    from_server_msg* new_server_msg = malloc(sizeof (from_server_msg));
-    if (new_server_msg == NULL)
-        return NULL;
-
     jsmn_init(&p);
     r = jsmn_parse(&p, json_msg, strlen(json_msg), token,
                   sizeof(token) / sizeof(token[0]));
     if (r < 0) {
       printf("Failed to parse JSON: %d\n", r);
-      return NULL;
+      return 1;
     }
 
     /* Assume the top-level element is an object */
     if (r < 1 || token[0].type != JSMN_OBJECT) {
       printf("Object expected\n");
-      return NULL;
+      return 1;
     }
 
     /* Loop over all keys of the root object */
@@ -163,7 +162,7 @@ from_server_msg* fill_in_struct_from_json(char *json_msg)
       } 
     }
 
-    return new_server_msg;
+    return 0;
 }
 
 void print_out_from_server_msg(from_server_msg *server_msg_struct)
