@@ -26,5 +26,5 @@ git subtree add -P WebServer external feature --squash
 ```
 
 ### GOTCHAS
-* `git subtree push` and `git subtree pull` commands has to be performed inside the web server repo 
+* `git subtree push` and `git subtree pull` commands has to be performed outside of the web server repo 
 * Don't use `git pull external main` it will pull everything from the main tree!
