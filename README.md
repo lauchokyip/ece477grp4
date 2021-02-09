@@ -5,7 +5,10 @@
 * [Devansh Rathi](https://github.com/DevanshRathi1) (Software Lead)
 * [Chok Yip Lau](https://github.com/lauchokyip) (Systems Lead)
 
-## Homework 
+## [Web Server](https://virtualqueue477.herokuapp.com/)
+[Git Workflow](webserver_git_workflow/README.md)
+
+### Homework 
 * [Functional Specification](HW/ECE477HW2.pdf)
 * [Software Overview](HW/ECE477HW3.pdf)
 * [Component Analysis](HW/ECE477HW4.pdf)
