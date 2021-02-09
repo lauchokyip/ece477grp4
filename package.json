@@ -1,0 +1,15 @@
+{
+    "name": "virtualqueue477",
+    "version": "1.0.0",
+    "description": "Virtual queue: a senior design project for ECE 477",
+    "main": "index.html",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "author": "Devansh Rathi",
+    "license": "MIT",
+    "dependencies": {
+        "ejs": "^3.1.6",
+        "express": "^4.17.1"
+    }
+}
