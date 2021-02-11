@@ -1,8 +1,7 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include "json.h"
-#include "jsmn.h"
-#include "stdio.h"
-#include "stdlib.h"
-#include "string.h"
 
 static const char *STM32_JSON = 
   "{\n"
@@ -30,7 +29,7 @@ int main()
     {
       return EXIT_FAILURE;
     }
-    print_out_from_server_msg(test_server_struct);
+    print_out_from_server_msg(&test_server_struct);
     
     return EXIT_SUCCESS;
 }

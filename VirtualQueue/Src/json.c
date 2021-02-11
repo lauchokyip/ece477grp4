@@ -1,8 +1,8 @@
-#include "json.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include "jsmn.h"
-#include "stdio.h"
-#include "stdlib.h"
-#include "string.h"
+#include "json.h"
 
 
 // TODO: replace printf to LCD display
