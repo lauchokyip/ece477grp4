@@ -4,7 +4,7 @@
 #include "mytype.h"
 
 /**
- * Customer holds all the fields that a customer has
+ * customer_t holds all the fields that a customer has
  */
 typedef struct customer_t {
     int id;
@@ -16,7 +16,7 @@ typedef struct customer_t {
 } customer_t;
 
 /**
- * Ingress_JSON will have all the field needed from the server
+ * from_server_msg will have all the field needed and can be filled up from the server JSON 
  */
 typedef struct from_server_msg{
     char status[8];
@@ -25,6 +25,6 @@ typedef struct from_server_msg{
     char errMsg[128];
 } from_server_msg;
 
-from_server_msg* fill_in_struct_from_json(char *json_msg);
+int fill_in_struct_from_json(char *json_msg, from_server_msg* new_server_msg);
 
 #endif
