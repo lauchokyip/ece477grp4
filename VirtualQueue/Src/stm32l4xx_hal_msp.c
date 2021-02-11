@@ -93,13 +93,13 @@ void HAL_LCD_MspInit(LCD_HandleTypeDef* hlcd)
   /* USER CODE END LCD_MspInit 0 */
     /* Peripheral clock enable */
     __HAL_RCC_LCD_CLK_ENABLE();
-  
+
     __HAL_RCC_GPIOC_CLK_ENABLE();
     __HAL_RCC_GPIOA_CLK_ENABLE();
-    /**LCD GPIO Configuration    
+    /**LCD GPIO Configuration
     PC3     ------> LCD_VLCD
     PA8     ------> LCD_COM0
-    PA9     ------> LCD_COM1 
+    PA9     ------> LCD_COM1
     */
     GPIO_InitStruct.Pin = GPIO_PIN_3;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
@@ -137,11 +137,11 @@ void HAL_LCD_MspDeInit(LCD_HandleTypeDef* hlcd)
   /* USER CODE END LCD_MspDeInit 0 */
     /* Peripheral clock disable */
     __HAL_RCC_LCD_CLK_DISABLE();
-  
-    /**LCD GPIO Configuration    
+
+    /**LCD GPIO Configuration
     PC3     ------> LCD_VLCD
     PA8     ------> LCD_COM0
-    PA9     ------> LCD_COM1 
+    PA9     ------> LCD_COM1
     */
     HAL_GPIO_DeInit(GPIOC, GPIO_PIN_3);
 
