@@ -20,7 +20,8 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-
+#include <stdio.h>
+#include "retarget.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -47,6 +48,7 @@ ADC_HandleTypeDef hadc1;
 LCD_HandleTypeDef hlcd;
 
 UART_HandleTypeDef huart4;
+UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 
@@ -58,6 +60,7 @@ static void MX_GPIO_Init(void);
 static void MX_LCD_Init(void);
 static void MX_UART4_Init(void);
 static void MX_ADC1_Init(void);
+static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -71,6 +74,11 @@ static void MX_ADC1_Init(void);
   * @brief  The application entry point.
   * @retval int
   */
+
+uint8_t dataTx[] = "AT\r\n";
+uint8_t dataRx;
+uint8_t delay_time;
+char msg_2[12];
 int main(void)
 {
   /* USER CODE BEGIN 1 */
@@ -99,30 +107,61 @@ int main(void)
   MX_LCD_Init();
   MX_UART4_Init();
   MX_ADC1_Init();
+  MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
-  BSP_LCD_GLASS_DisplayString("Hello");
+  //BSP_LCD_GLASS_DisplayString("Hello");
+  RetargetInit(&huart2);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 
-  uint8_t data;
-  HAL_UART_Receive_IT(&huart4, &data, 1); //HAL_UART_Receive_IT(UART handle, data buffer address, amount of data (bytes = 8 bits))
+  //HAL_UART_Receive_IT(&huart4, &data, 1); //HAL_UART_Receive_IT(UART handle, data buffer address, amount of data (bytes = 8 bits))
   //HAL_UART_Transmit_IT(&huart4, &data, 1); //HAL_UART_Receive_IT(UART handle, data buffer address, amount of data (bytes = 8 bits))
   uint16_t raw;
   char msg[12];
-  uint8_t delay_time;
+  int i = 0;
+  HAL_UART_Transmit(&huart4, dataTx, 4, 100);
+  //printf("%s", dataTx);
+  HAL_UART_Receive_IT(&huart4, dataRx, 6);
+  //printf("%s", dataRx);
+
   while (1)
   {
-    /* USER CODE END WHILE */
-	    HAL_ADC_Start(&hadc1);
-	    HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
-	    raw = HAL_ADC_GetValue(&hadc1);
-	    sprintf(msg, "%hu\r\n", raw);
-		HAL_Delay(delay_time);
-		delay_time = 1000;
-		BSP_LCD_GLASS_DisplayString(msg);
-    /* USER CODE BEGIN 3 */
+
+    /*
+     * ADC STUFF
+     */
+	    /*
+	     * ADC STUFF
+	     *  USER CODE END WHILE */
+		    /*HAL_ADC_Start(&hadc1);
+		    HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
+		    raw = HAL_ADC_GetValue(&hadc1);
+		    sprintf(msg, "%hu\r\n", raw);
+			HAL_Delay(delay_time);
+			delay_time = 1000;
+			BSP_LCD_GLASS_DisplayString(msg);
+		*/
+
+
+		   //test for uart stuff
+	  if(i < 10){
+		    sprintf(msg, "%hu\r\n", dataRx);
+			HAL_Delay(delay_time);
+			delay_time = 1000;
+			printf("%s", msg);
+
+			i += 1;
+  	  }
+//tests uart2 print to console
+//		  delay_time = 1000;
+//		  if(i < 10){
+//			  printf("\r\ntest test test\r\n");
+//		  }
+//
+//		  i += 1;
+
   }
   /* USER CODE END 3 */
 }
@@ -162,8 +201,9 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_RTC|RCC_PERIPHCLK_UART4
-                              |RCC_PERIPHCLK_ADC;
+  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_RTC|RCC_PERIPHCLK_USART2
+                              |RCC_PERIPHCLK_UART4|RCC_PERIPHCLK_ADC;
+  PeriphClkInit.Usart2ClockSelection = RCC_USART2CLKSOURCE_PCLK1;
   PeriphClkInit.Uart4ClockSelection = RCC_UART4CLKSOURCE_PCLK1;
   PeriphClkInit.AdcClockSelection = RCC_ADCCLKSOURCE_PLLSAI1;
   PeriphClkInit.RTCClockSelection = RCC_RTCCLKSOURCE_LSI;
@@ -324,6 +364,41 @@ static void MX_UART4_Init(void)
 }
 
 /**
+  * @brief USART2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART2_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART2_Init 0 */
+
+  /* USER CODE END USART2_Init 0 */
+
+  /* USER CODE BEGIN USART2_Init 1 */
+
+  /* USER CODE END USART2_Init 1 */
+  huart2.Instance = USART2;
+  huart2.Init.BaudRate = 115200;
+  huart2.Init.WordLength = UART_WORDLENGTH_8B;
+  huart2.Init.StopBits = UART_STOPBITS_1;
+  huart2.Init.Parity = UART_PARITY_NONE;
+  huart2.Init.Mode = UART_MODE_TX_RX;
+  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
+  huart2.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+  huart2.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+  if (HAL_UART_Init(&huart2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART2_Init 2 */
+
+  /* USER CODE END USART2_Init 2 */
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -336,6 +411,7 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
+  __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, GPIO_PIN_RESET);
@@ -350,7 +426,13 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+    sprintf(msg_2, "%hu\r\n", dataRx);
+	printf("%s", dataRx);
+	//HAL_Delay(1000);
+	//HAL_UART_Receive_IT(&huart4, dataRx, 2);
+}
 /* USER CODE END 4 */
 
 /**
