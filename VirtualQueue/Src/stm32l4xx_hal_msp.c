@@ -251,6 +251,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
 
   /* USER CODE END UART4_MspInit 1 */
   }
+<<<<<<< HEAD
   else if(huart->Instance==USART2)
   {
   /* USER CODE BEGIN USART2_MspInit 0 */
@@ -283,6 +284,8 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
 
   /* USER CODE END USART2_MspInit 1 */
   }
+=======
+>>>>>>> origin/nate
 
 }
 
@@ -314,6 +317,7 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* huart)
 
   /* USER CODE END UART4_MspDeInit 1 */
   }
+<<<<<<< HEAD
   else if(huart->Instance==USART2)
   {
   /* USER CODE BEGIN USART2_MspDeInit 0 */
@@ -334,6 +338,8 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* huart)
 
   /* USER CODE END USART2_MspDeInit 1 */
   }
+=======
+>>>>>>> origin/nate
 
 }
 

@@ -20,8 +20,12 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+<<<<<<< HEAD
 #include <stdio.h>
 #include "retarget.h"
+=======
+
+>>>>>>> origin/nate
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -48,7 +52,10 @@ ADC_HandleTypeDef hadc1;
 LCD_HandleTypeDef hlcd;
 
 UART_HandleTypeDef huart4;
+<<<<<<< HEAD
 UART_HandleTypeDef huart2;
+=======
+>>>>>>> origin/nate
 
 /* USER CODE BEGIN PV */
 
@@ -59,15 +66,19 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_LCD_Init(void);
 static void MX_UART4_Init(void);
+<<<<<<< HEAD
 static void MX_ADC1_Init(void);
 static void MX_USART2_UART_Init(void);
+=======
+>>>>>>> origin/nate
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+int delay_time;
+uint8_t dataRx[10];
 /* USER CODE END 0 */
 
 /**
@@ -82,7 +93,7 @@ char msg_2[12];
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-
+  delay_time = 500;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -92,7 +103,6 @@ int main(void)
 
   /* USER CODE BEGIN Init */
   BSP_LCD_GLASS_Init();
-
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -106,11 +116,18 @@ int main(void)
   MX_GPIO_Init();
   MX_LCD_Init();
   MX_UART4_Init();
+<<<<<<< HEAD
   MX_ADC1_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
   //BSP_LCD_GLASS_DisplayString("Hello");
   RetargetInit(&huart2);
+=======
+  /* USER CODE BEGIN 2 */
+  uint8_t dataTx[] = "AT\r\n";
+  HAL_UART_Transmit(&huart4, dataTx, 4, 100);
+  HAL_UART_Receive_IT(&huart4, dataRx, 6);
+>>>>>>> origin/nate
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -129,6 +146,7 @@ int main(void)
   while (1)
   {
 
+<<<<<<< HEAD
     /*
      * ADC STUFF
      */
@@ -162,6 +180,11 @@ int main(void)
 //
 //		  i += 1;
 
+=======
+    /* USER CODE BEGIN 3 */
+	HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_2);
+	HAL_Delay(delay_time);
+>>>>>>> origin/nate
   }
   /* USER CODE END 3 */
 }
@@ -201,11 +224,16 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+<<<<<<< HEAD
   PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_RTC|RCC_PERIPHCLK_USART2
                               |RCC_PERIPHCLK_UART4|RCC_PERIPHCLK_ADC;
   PeriphClkInit.Usart2ClockSelection = RCC_USART2CLKSOURCE_PCLK1;
   PeriphClkInit.Uart4ClockSelection = RCC_UART4CLKSOURCE_PCLK1;
   PeriphClkInit.AdcClockSelection = RCC_ADCCLKSOURCE_PLLSAI1;
+=======
+  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_RTC|RCC_PERIPHCLK_UART4;
+  PeriphClkInit.Uart4ClockSelection = RCC_UART4CLKSOURCE_PCLK1;
+>>>>>>> origin/nate
   PeriphClkInit.RTCClockSelection = RCC_RTCCLKSOURCE_LSI;
   PeriphClkInit.PLLSAI1.PLLSAI1Source = RCC_PLLSOURCE_MSI;
   PeriphClkInit.PLLSAI1.PLLSAI1M = 1;
@@ -364,6 +392,7 @@ static void MX_UART4_Init(void)
 }
 
 /**
+<<<<<<< HEAD
   * @brief USART2 Initialization Function
   * @param None
   * @retval None
@@ -399,6 +428,8 @@ static void MX_USART2_UART_Init(void)
 }
 
 /**
+=======
+>>>>>>> origin/nate
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -411,7 +442,10 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
+<<<<<<< HEAD
   __HAL_RCC_GPIOD_CLK_ENABLE();
+=======
+>>>>>>> origin/nate
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, GPIO_PIN_RESET);
@@ -428,8 +462,13 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
+<<<<<<< HEAD
     sprintf(msg_2, "%hu\r\n", dataRx);
 	printf("%s", dataRx);
+=======
+	delay_time = 100;
+	BSP_LCD_GLASS_DisplayString(dataRx);
+>>>>>>> origin/nate
 	//HAL_Delay(1000);
 	//HAL_UART_Receive_IT(&huart4, dataRx, 2);
 }
