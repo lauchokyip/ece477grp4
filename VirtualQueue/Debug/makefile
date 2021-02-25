@@ -10,17 +10,28 @@ RM := rm -rf
 -include sources.mk
 -include Startup/subdir.mk
 -include Src/subdir.mk
--include Drivers/STM32L4xx_HAL_Driver/Src/subdir.mk
+-include Drivers/STM32L4xx_HAL_Driver/subdir.mk
 -include subdir.mk
 -include objects.mk
 
 ifneq ($(MAKECMDGOALS),clean)
+ifneq ($(strip $(S_DEPS)),)
+-include $(S_DEPS)
+endif
+ifneq ($(strip $(S_UPPER_DEPS)),)
+-include $(S_UPPER_DEPS)
+endif
 ifneq ($(strip $(C_DEPS)),)
 -include $(C_DEPS)
 endif
 endif
 
 -include ../makefile.defs
+
+BUILD_ARTIFACT_NAME := VirtualQueue
+BUILD_ARTIFACT_EXTENSION := elf
+BUILD_ARTIFACT_PREFIX := 
+BUILD_ARTIFACT := $(BUILD_ARTIFACT_PREFIX)$(BUILD_ARTIFACT_NAME).$(BUILD_ARTIFACT_EXTENSION)
 
 # Add inputs and outputs from these tool invocations to the build variables 
 EXECUTABLES += \
@@ -32,13 +43,19 @@ default.size.stdout \
 OBJDUMP_LIST += \
 VirtualQueue.list \
 
+OBJCOPY_BIN += \
+VirtualQueue.bin \
+
 
 # All Target
-all: VirtualQueue.elf secondary-outputs
+all: main-build
+
+# Main-build Target
+main-build: VirtualQueue.elf secondary-outputs
 
 # Tool invocations
-VirtualQueue.elf: $(OBJS) $(USER_OBJS) /home/lau/Projects/ece477grp4/VirtualQueue/STM32L476VGTX_FLASH.ld
-	arm-none-eabi-gcc -o "VirtualQueue.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"/home/lau/Projects/ece477grp4/VirtualQueue/STM32L476VGTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="VirtualQueue.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+VirtualQueue.elf: $(OBJS) $(USER_OBJS) C:\Users\acroy\Documents\GitHub\ece477grp4\VirtualQueue\STM32L476VGTX_FLASH.ld
+	arm-none-eabi-gcc -o "VirtualQueue.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\acroy\Documents\GitHub\ece477grp4\VirtualQueue\STM32L476VGTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="VirtualQueue.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 
@@ -52,14 +69,26 @@ VirtualQueue.list: $(EXECUTABLES)
 	@echo 'Finished building: $@'
 	@echo ' '
 
+VirtualQueue.bin: $(EXECUTABLES)
+	arm-none-eabi-objcopy  -O binary $(EXECUTABLES) "VirtualQueue.bin"
+	@echo 'Finished building: $@'
+	@echo ' '
+
 # Other Targets
 clean:
 	-$(RM) *
 	-@echo ' '
 
-secondary-outputs: $(SIZE_OUTPUT) $(OBJDUMP_LIST)
+secondary-outputs: $(SIZE_OUTPUT) $(OBJDUMP_LIST) $(OBJCOPY_BIN)
 
-.PHONY: all clean dependents
+fail-specified-linker-script-missing:
+	@echo 'Error: Cannot find the specified linker script. Check the linker settings in the build configuration.'
+	@exit 2
+
+warn-no-linker-script-specified:
+	@echo 'Warning: No linker script specified. Check the linker settings in the build configuration.'
+
+.PHONY: all clean dependents fail-specified-linker-script-missing warn-no-linker-script-specified
 .SECONDARY:
 
 -include ../makefile.targets
