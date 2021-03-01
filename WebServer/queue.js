@@ -27,18 +27,27 @@ function addCustomerToQueue(customer) {
 
 /**
  * deleteCustomerFromQueue will delete customer from the queue given the array index
- * return false if customer is not on the queue or any error occur when perform deletion,
- * return true if the customer is deleted
+ * return undefined if customer is not on the queue or any error occur when perform deletion,
+ * return the customer object if the customer is deleted
  * @param {*} arrayIndex
  */
 function deleteCustomerFromQueue(arrayIndex) {
-    if (arrayIndex < 0 || arrayIndex + 1 > queue.length) return false;
-    deletedObject = queue.splice(arrayIndex, 1);
-    if (deletedObject == undefined) return false;
-    return true;
+    if (arrayIndex < 0 || arrayIndex + 1 > queue.length) 
+        return undefined;
+    return queue.splice(arrayIndex, 1);
+}
+
+function length() {
+    return queue.length;
+}
+
+function get(index) {
+    return queue[index];
 }
 
 module.exports = {
+    get,
+    length,
     customerIndexOnQueue,
     addCustomerToQueue,
     deleteCustomerFromQueue,

@@ -26,56 +26,65 @@ if (isIOSChrome) {
 
 }
 
-// Ask for permission (must)
-if (window.Notification) {
-    Notification.requestPermission((status) => {
-      console.log('Status of the request:', status)
-      if (Notification.permission !== 'granted') {
-        // TODO: Display that we need notification in order for it to work
-      } else {
-        register().catch(error => console.error(error));
-      }
-    })
-}
-
-async function register() {
-    // check if service worker is in the browser first
-    if ("serviceWorker" in navigator) {
-      // Register Service Worker
-      console.log("Registering service worker...");
-      
-      const register = await navigator.serviceWorker.register("./worker.js", {
-        scope: "/"
-      });
-      console.log("Service Worker Registered...");
-  
-      // Register Push
-      console.log("Registering Push...");
-      const subscription = await register.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(publicVapidKey)
-      });
-      console.log("Push Registered...");
-  
-      // Send Push Notification
-      console.log("Sending Push...");
-      let response = await fetch("/subscribe", {
-        method: "POST",
-        body: JSON.stringify(subscription),
-        headers: {
-          "content-type": "application/json"
+export async function registerSW(customerId) {
+    if (window.Notification) {
+      Notification.requestPermission( async (status) => {
+        console.log('Status of the request:', status)
+        if (Notification.permission !== 'granted') {
+          // TODO: Display that we need notification in order for it to work
+        } else {
+              // check if service worker is in the browser first
+          if ("serviceWorker" in navigator) {
+            try {
+              // Register Service Worker
+              console.log("Registering service worker...");
+              
+              const registerSW1 = await navigator.serviceWorker.register("./worker.js", {
+                scope: "/"
+              });
+              console.log("Service Worker Registered...");
+          
+              // Register Push
+              console.log("Registering Push...");
+              const subscription = await registerSW1.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(publicVapidKey)
+              });
+              console.log("Push Registered...");
+          
+              // Send Push Notification
+              console.log("Sending Push...");
+              const idAndSubsciption = {
+                id: customerId,
+                subscription: subscription
+              }
+              console.log(idAndSubsciption)
+              let response = await fetch("/subscribe", {
+                method: "POST",
+                body: JSON.stringify(idAndSubsciption),
+                headers: {
+                  "content-type": "application/json"
+                }
+              });
+              if(!response.ok)
+              {
+                throw new Error(`HTTP Error status: ` + response.status)
+              } 
+          
+              console.log("Push Sent...");
+            } catch(error) {
+              console.log(error)
+              return error
+            }
+          }
+          else {
+            alert("This browser does not support service worker. Please install Google Chrome")
+          }
         }
-      });
-      if(!response.ok)
-      {
-        throw new Error(`HTTP Error status: ` + response.status)
-      } 
-  
-      console.log("Push Sent...");
+      })
+      
     }
-    else {
-      alert("This browser does not support service worker. Please install Google Chrome")
-    }
+   
 }
 
 function urlBase64ToUint8Array(base64String) {

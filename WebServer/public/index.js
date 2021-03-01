@@ -56,26 +56,14 @@ function validateInput() {
     }
 
     console.log("running validate");
-    if (txtName.value.length === 0) {
-        disableBtn();
-        return;
-    }
-    if (txtEmail.value.length === 0) {
-        disableBtn();
-        return;
-    }
-    if (txtNumPeople.value.length === 0) {
-        disableBtn();
-        return;
-    }
-    var numPeople;
-    try {
-        numPeople = parseInt(txtNumPeople.value);
-    } catch (err) {
-        disableBtn();
-        return;
-    }
-    if (numPeople <= 0) {
+
+    const potenCustomer = customerHelper.makePoten(
+        txtName.value,
+        txtEmail.value,
+        txtNumPeople.value
+    );
+
+    if (potenCustomer === null) {
         disableBtn();
         return;
     }
@@ -94,15 +82,15 @@ btnJoinQueue.addEventListener("click", async function () {
     btnClicked = true;
     disableBtn();
 
-    const customer = {
-        name: txtName.value,
-        email: txtEmail.value,
-        numPeopleInParty: parseInt(txtNumPeople.value),
-    };
+    const potenCustomer = customerHelper.makePoten(
+        txtName.value,
+        txtEmail.value,
+        txtNumPeople.value
+    );
 
-    var potenID = await getPotenID(customer);
+    var potenID = await getPotenID(potenCustomer);
     if (potenID !== null) {
-        localStorage.setItem("potenCustomer", JSON.stringify(customer));
+        localStorage.setItem("potenCustomer", JSON.stringify(potenCustomer));
         window.location.href = "/joinQueue";
     } else {
         alert("Something went wrong generating customer ID");

@@ -1,7 +1,8 @@
 const crypto = require("crypto");
+const { ID_BITLEN } = require("./helper/customerHelper.js");
 
 const ID_TTL = 1800 * 1000;
-const ID_BITLEN = 32;
+// const ID_BITLEN = 32;
 
 const potentialQueue = {};
 
@@ -66,4 +67,4 @@ function setSocketID(potenID, socketID) {
     return true;
 }
 
-module.exports = { get, setSocketID, generateID, remove, exists };
+module.exports = { get, setSocketID, generateID, remove, exists, ID_BITLEN };

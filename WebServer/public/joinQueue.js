@@ -1,3 +1,4 @@
+import {registerSW} from "./registerServiceWorker.js"
 const divQRCode = document.getElementById("qrcode");
 const btnNewQRCode = document.getElementById("btnNewQRCode");
 var destroyQRTimeout;
@@ -80,7 +81,7 @@ function makeQRCode(potenId, div) {
         colorLight: "#ffffff",
         correctLevel: QRCode.CorrectLevel.H,
     });
-
+    console.log(potenId)
     return qrcode;
 }
 
@@ -98,10 +99,13 @@ socket.on("moveToQueue", function (data) {
     localStorage.removeItem("potenID");
     localStorage.removeItem("potenCustomer");
     window.location.href = "/queue";
+
+    // subscribe over here after the customer
+    registerSW(data.customer["id"]).catch(error => console.error(error));
 });
 
 function linkSocketToID(potenID) {
-    data = {
+    let data = {
         potenID,
     };
     socket.emit("potenID", data);

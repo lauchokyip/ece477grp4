@@ -9,30 +9,24 @@ const bodyParser = require("body-parser");
 const potentialQueue = require("./potentialQueue.js");
 const serverSocket = require("./serverSocket.js");
 const queue = require("./queue.js");
-const notification = require("./notification")
+const notification = require("./notification");
+const customerHelper = require("./helper/customerHelper.js");
 
 const PORT = process.env.PORT || 3001;
 const app = express();
 const httpServer = http.Server(app);
 const io = socket(httpServer);
 const STORE_SECRET = "grp4";
-const publicVapidKey = "BKUIR2K8S-WoOEqPaluuHgRLf7_ud8OxSMVGiOzUrtBzWdM7mOhDRkwsty5dJsyYcWZtSiVjpsOE1WZofG3v-S0";
-const privateVapidKey = "qW6a1325o4JjBqUc7ylFLeL88Y_4Fgp28sUBCNLOYZI";
 
 // middleware
 app.use(express.static("public"));
+app.use("/helper", express.static("helper"));
 app.use("/bootstrap", express.static("node_modules/bootstrap/dist/css"));
 app.use(express.json({ limit: "1mb" }));
 app.use(bodyParser.json());
 app.set("view engine", "ejs");
 
 io.sockets.on("connection", serverSocket.connection);
-
-webpush.setVapidDetails(
-    "mailto:test@test.com",
-    publicVapidKey,
-    privateVapidKey
-);
 // TODO: Need an API to set up the store capacity
 
 // -----------------PAGE REQUESTS----------------------x
@@ -54,28 +48,26 @@ app.get("/queue", (req, res) => {
 
 // this will remove clear all the array of Subscription Object
 app.get("/deleteSub", (req, res) => {
-    notification.clearAllSubscriptionsFromDatabaes()
-    .then((subscriptions) => {
-        res.status(200)
+    notification.clearAllSubscriptionsFromDatabaes().then((subscriptions) => {
+        res.status(200);
         res.setHeader("Content-Type", "application/json");
         res.send(JSON.stringify({ data: subscriptions }));
-    })
+    });
 });
 
 // test admin push Route
 app.get("/adminTestPush", (req, res) => {
-    // Create payload
-    const payload = JSON.stringify({
-        title: "Push notifications with Service Workers",
-    });
-    notification.getSubscriptionsFromDatabase()
+    notification
+        .getSubscriptionsFromDatabase()
         .then((subscriptions) => {
+            const payload = JSON.stringify({
+                title: "Broadcasting messages to everyone",
+            });
             let promiseChain = Promise.resolve();
-
             for (let i = 0; i < subscriptions.length; i++) {
-                const subscription = subscriptions[i];
+                const subscription = subscriptions[i]["subscription"];
                 promiseChain = promiseChain.then(() => {
-                    return triggerPushMsg(subscription, payload);
+                    return notification.triggerPushMsg(subscription, payload);
                 });
             }
             res.setHeader("Content-Type", "application/json");
@@ -96,6 +88,35 @@ app.get("/adminTestPush", (req, res) => {
             );
         });
 });
+
+// test pushing to single user
+app.get("/testPush", (req, res) => {
+    const customerId = req.query.id
+    console.log(customerId)
+    notification.getSubscriptionsByID(customerId)
+    .then( (subscriptionObj) => {
+        const payload = JSON.stringify({
+            title: "It's your turn",
+        });
+        notification.triggerPushMsg(subscriptionObj, payload)
+        res.setHeader("Content-Type", "application/json");
+        res.send(JSON.stringify({ message: `Data successfully sent to '${customerId}'`  }));
+    })
+    .catch((err) => {
+        res.status(500);
+        res.setHeader("Content-Type", "application/json");
+        res.send(
+            JSON.stringify({
+                error: {
+                    id: "unable-to-send-messages",
+                    message:
+                        `We were unable to send messages to all subscriptions : ` +
+                        `'${err}'`,
+                },
+            })
+        );
+    })
+})
 
 // ----------------------------------------------------x
 // -----------------POST REQUESTS----------------------x
@@ -131,7 +152,8 @@ app.post("/subscribe", (req, res) => {
     if (!notification.isValidSaveRequest(req, res)) {
         return;
     }
-    notification.saveSubscriptionToDatabase(req.body)
+    notification
+        .saveSubscriptionToDatabase(req.body)
         .then(function (subscriptionId) {
             res.setHeader("Content-Type", "application/json");
             res.send(JSON.stringify({ data: { success: true } }));
@@ -151,21 +173,6 @@ app.post("/subscribe", (req, res) => {
         });
 });
 
-/**
- * triggerPushMsg will push message once it's called
- * @param {*} subscription
- * @param {*} dataToSend
- */
-const triggerPushMsg = (subscription, dataToSend) => {
-    return webpush.sendNotification(subscription, dataToSend).catch((err) => {
-        if (err.statusCode === 410) {
-            // return deleteSubscriptionFromDatabase(subscription._id);
-        } else {
-            console.log("Subscription is no longer valid: ", err);
-        }
-    });
-};
-
 
 
 // ----------------------------------------------------x
@@ -175,6 +182,7 @@ app.get("/enterQueue", (req, res) => {
     if (storeSecret.localeCompare(STORE_SECRET)) {
         console.log("BAD SECRET");
         res.status(401);
+        res.json({ success: false });
         return;
     }
 
@@ -182,6 +190,7 @@ app.get("/enterQueue", (req, res) => {
     if (!potentialQueue.exists(potenID)) {
         console.log("BAD POTENTIAL ID");
         res.status(404);
+        res.json({ success: false });
         return;
     }
 
@@ -189,11 +198,8 @@ app.get("/enterQueue", (req, res) => {
     potentialQueue.remove(potenID);
 
     // add id to the customer since now they have joined the queue
-    const customer = potenCustomer;
-    customer.id = potenID;
+    const customer = customerHelper.make(potenCustomer, potenID);
     queue.addCustomerToQueue(customer);
-
-    // subscibe to notification
 
     serverSocket.moveToQueue(io, socketID, customer);
     res.status(200);
@@ -203,5 +209,4 @@ app.get("/enterQueue", (req, res) => {
 });
 // ----------------------------------------------------x
 
-// console.log(io);
 httpServer.listen(PORT, () => console.log(`Http listening at port ${PORT}`));
