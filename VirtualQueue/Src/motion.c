@@ -27,10 +27,10 @@ static float m_last_mark_value_diff13 = 0;
 static float m_last_mark_value_diff24 = 0;
 
 static uint32_t last_time = 0;
-static uint32_t detect_interval = 50; // 50 ms
+static uint32_t detect_interval = 100; // 50 ms
 
 float threshold_presence = 10;
-float threshold_movement = 15;
+float threshold_movement = 5;
 
 static uint8_t movement = MOVEMENT_NONE;
 
@@ -130,14 +130,15 @@ bool is_motion_data_ready(I2C_HandleTypeDef* hi2c) {
 
 uint16_t get_raw_IR(I2C_HandleTypeDef* hi2c, uint16_t IR_address ) {
 	uint8_t data[2];
-	uint8_t ret;
+	uint16_t ret;
 	ret = read_register(hi2c, IR_address, data, 2);
 	if(ret != MOTION_OK)
 	{
 		BSP_LCD_GLASS_DisplayString("Error7");
 		return MOTION_ERROR;
 	}
-	return (data[1] << 8 | data[0]);
+	ret = data[1] << 8 | data[0];
+	return ret;
 }
 
 float get_IR_or_TMP(I2C_HandleTypeDef* hi2c, uint8_t which_IR) {
@@ -233,7 +234,7 @@ bool loop_motion_sensor(I2C_HandleTypeDef* hi2c) {
 	if(now - last_time > detect_interval){
 
 		float deriviative13 = get_deriviative(5);
-		if(deriviative13 > threshold_presence)
+		if(deriviative13 > threshold_movement)
 		{
 			 movement &= 0b11111100; 
              movement |= MOVEMENT_FROM_3_TO_1;
@@ -245,7 +246,7 @@ bool loop_motion_sensor(I2C_HandleTypeDef* hi2c) {
 		}
 
 		float deriviative24 = get_deriviative(6);
-		if(deriviative24 > threshold_presence)
+		if(deriviative24 > threshold_movement)
 		{
 			 movement &= 0b11110011;
              movement |= MOVEMENT_FROM_4_TO_2;
