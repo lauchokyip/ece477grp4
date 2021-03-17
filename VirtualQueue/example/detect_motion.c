@@ -115,19 +115,35 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  if (loop_motion_sensor(&hi2c1) == false)
+		  continue;
 
-    /* USER CODE END WHILE */
-	  if(is_motion_data_ready(&hi2c1))
-	  {
-		  float temperature =  get_IR_or_TMP(&hi2c1, 5);
-		  int output = (int) temperature;
-		  refresh(&hi2c1);
+	  uint8_t movement = motion_sensor_get_moment();
 
-		  sprintf(str, "%d", output);
-		  BSP_LCD_GLASS_DisplayString(str);
-		  HAL_Delay(100);
-	  }
+	  if(movement & MOVEMENT_FROM_1_TO_3)
+    {
+      BSP_LCD_GLASS_DisplayString("UP");
+      HAL_Delay(500);
+    }
+    else if (movement & MOVEMENT_FROM_3_TO_1)
+    {
+      BSP_LCD_GLASS_DisplayString("DOWN");
+      HAL_Delay(500);
+    }
+
+	if (movement & MOVEMENT_FROM_2_TO_4)
+    {
+      BSP_LCD_GLASS_DisplayString("RIGHT");
+      HAL_Delay(500);
+    }
+    else if(movement & MOVEMENT_FROM_4_TO_2)
+    {
+      BSP_LCD_GLASS_DisplayString("LEFT");
+      HAL_Delay(500);
+    }
+
 	  BSP_LCD_GLASS_Clear();
+    /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
 
