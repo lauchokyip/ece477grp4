@@ -20,6 +20,7 @@
 #include "stm32l476g_discovery_glass_lcd.h"
 #include "motion.h"
 #include "mytype.h"
+#include "display.h"
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
@@ -49,6 +50,8 @@ I2C_HandleTypeDef hi2c1;
 
 LCD_HandleTypeDef hlcd;
 
+SPI_HandleTypeDef hspi1;
+
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -58,6 +61,7 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_LCD_Init(void);
 static void MX_I2C1_Init(void);
+static void MX_SPI1_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -66,6 +70,7 @@ static void MX_I2C1_Init(void);
 /* USER CODE BEGIN 0 */
 
 /* USER CODE END 0 */
+
 /**
   * @brief  The application entry point.
   * @retval int
@@ -97,17 +102,11 @@ int main(void)
   MX_GPIO_Init();
   MX_LCD_Init();
   MX_I2C1_Init();
+  MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
-//  int status;
-//  uint8_t data =  0xFF;
-//  status = HAL_I2C_Mem_Write(&hi2c1, 0x64 << 1, 0x1D, I2C_MEMADD_SIZE_8BIT,(uint8_t *) &data, 1, 100);
+ BSP_LCD_GLASS_DisplayString("hello");
+  initialize_display(&hspi1);
 
-  bool intialize_successful = initialize_motion_sensor(&hi2c1);
-  if(intialize_successful == false)
-  {
-	  return false;
-  }
-  char str[80];
 
   /* USER CODE END 2 */
 
@@ -117,17 +116,6 @@ int main(void)
   {
 
     /* USER CODE END WHILE */
-	  if(is_motion_data_ready(&hi2c1))
-	  {
-		  float temperature =  get_IR_or_TMP(&hi2c1, 5);
-		  int output = (int) temperature;
-		  refresh(&hi2c1);
-
-		  sprintf(str, "%d", output);
-		  BSP_LCD_GLASS_DisplayString(str);
-		  HAL_Delay(100);
-	  }
-	  BSP_LCD_GLASS_Clear();
 
     /* USER CODE BEGIN 3 */
 
@@ -271,17 +259,69 @@ static void MX_LCD_Init(void)
 }
 
 /**
+  * @brief SPI1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_SPI1_Init(void)
+{
+
+  /* USER CODE BEGIN SPI1_Init 0 */
+
+  /* USER CODE END SPI1_Init 0 */
+
+  /* USER CODE BEGIN SPI1_Init 1 */
+
+  /* USER CODE END SPI1_Init 1 */
+  /* SPI1 parameter configuration*/
+  hspi1.Instance = SPI1;
+  hspi1.Init.Mode = SPI_MODE_MASTER;
+  hspi1.Init.Direction = SPI_DIRECTION_2LINES;
+  hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
+  hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
+  hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
+  hspi1.Init.NSS = SPI_NSS_SOFT;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_4;
+  hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
+  hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
+  hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+  hspi1.Init.CRCPolynomial = 7;
+  hspi1.Init.CRCLength = SPI_CRC_LENGTH_DATASIZE;
+  hspi1.Init.NSSPMode = SPI_NSS_PULSE_DISABLE;
+  if (HAL_SPI_Init(&hspi1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN SPI1_Init 2 */
+
+  /* USER CODE END SPI1_Init 2 */
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
   */
 static void MX_GPIO_Init(void)
 {
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOC_CLK_ENABLE();
+  __HAL_RCC_GPIOE_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOE, RST_Pin|SPI1_CS_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pins : RST_Pin SPI1_CS_Pin */
+  GPIO_InitStruct.Pin = RST_Pin|SPI1_CS_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
 }
 
@@ -317,7 +357,5 @@ void assert_failed(uint8_t *file, uint32_t line)
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
-
-
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

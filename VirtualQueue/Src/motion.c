@@ -36,7 +36,7 @@ static uint8_t movement = MOVEMENT_NONE;
 
 
 // Functions start here
-uint8_t read_register(I2C_HandleTypeDef* hi2c, uint16_t register_value, uint8_t* data, int len) {
+uint8_t I2C_read_register(I2C_HandleTypeDef* hi2c, uint16_t register_value, uint8_t* data, int len) {
 	 HAL_StatusTypeDef status;
 
 	 status = HAL_I2C_Mem_Read(hi2c, AK975X_DEFAULT_ADDRESS , register_value, I2C_MEMADD_SIZE_8BIT, data , len, 100);
@@ -46,7 +46,7 @@ uint8_t read_register(I2C_HandleTypeDef* hi2c, uint16_t register_value, uint8_t*
 	return MOTION_OK;
 }
 
-uint8_t write_register(I2C_HandleTypeDef* hi2c, uint16_t register_value, uint8_t* data, int len){
+uint8_t I2C_write_register(I2C_HandleTypeDef* hi2c, uint16_t register_value, uint8_t* data, int len){
 	HAL_StatusTypeDef status;
 
     status = HAL_I2C_Mem_Write(hi2c, AK975X_DEFAULT_ADDRESS , register_value, I2C_MEMADD_SIZE_8BIT, data, len, 100);
@@ -58,7 +58,7 @@ uint8_t write_register(I2C_HandleTypeDef* hi2c, uint16_t register_value, uint8_t
 
 void refresh(I2C_HandleTypeDef* hi2c) {
 	uint8_t data = 0; // dummy val
-	read_register(hi2c, AK975X_ST2, &data, 1);
+	I2C_read_register(hi2c, AK975X_ST2, &data, 1);
 }
 
 
@@ -71,7 +71,7 @@ bool initialize_motion_sensor(I2C_HandleTypeDef* hi2c)
 
 	// soft Reset
     data = 0xFF;
-    ret = write_register(hi2c, AK975X_CNTL2, &data, 1);
+    ret = I2C_write_register(hi2c, AK975X_CNTL2, &data, 1);
     if(ret == MOTION_ERROR)
     {
 	  BSP_LCD_GLASS_DisplayString("Error0");
@@ -80,7 +80,7 @@ bool initialize_motion_sensor(I2C_HandleTypeDef* hi2c)
 
     // check sensor type
 	uint8_t sensor_type = 0;
-	ret = read_register(hi2c,AK975X_WIA2, &sensor_type , 1);
+	ret = I2C_read_register(hi2c,AK975X_WIA2, &sensor_type , 1);
 	if(ret == MOTION_ERROR)
 	{
 		BSP_LCD_GLASS_DisplayString("Error1");
@@ -94,7 +94,7 @@ bool initialize_motion_sensor(I2C_HandleTypeDef* hi2c)
 
 	// set to continous read and output frequency to fastest
 	data = (AK975X_FREQ_8_8HZ << 3) | AK975X_MODE_0;
-	ret = write_register(hi2c, AK975X_ECNTL1, &data, 1);
+	ret = I2C_write_register(hi2c, AK975X_ECNTL1, &data, 1);
     if(ret == MOTION_ERROR)
 	{
 	  BSP_LCD_GLASS_DisplayString("Error3");
@@ -103,7 +103,7 @@ bool initialize_motion_sensor(I2C_HandleTypeDef* hi2c)
 
     // enable interrupt
     data = 0x1f;
-    ret = write_register(hi2c, AK975X_EINTEN, &data, 1);
+    ret = I2C_write_register(hi2c, AK975X_EINTEN, &data, 1);
     if(ret == MOTION_ERROR)
     {
     	BSP_LCD_GLASS_DisplayString("Error4");
@@ -119,7 +119,7 @@ bool initialize_motion_sensor(I2C_HandleTypeDef* hi2c)
 bool is_motion_data_ready(I2C_HandleTypeDef* hi2c) {
 	uint8_t data;
 	uint8_t ret;
-	ret = read_register(hi2c, AK975X_ST1, &data, 1);
+	ret = I2C_read_register(hi2c, AK975X_ST1, &data, 1);
 	if(ret != MOTION_OK)
 	{
 		BSP_LCD_GLASS_DisplayString("Error6");
@@ -131,7 +131,7 @@ bool is_motion_data_ready(I2C_HandleTypeDef* hi2c) {
 uint16_t get_raw_IR(I2C_HandleTypeDef* hi2c, uint16_t IR_address ) {
 	uint8_t data[2];
 	uint16_t ret;
-	ret = read_register(hi2c, IR_address, data, 2);
+	ret = I2C_read_register(hi2c, IR_address, data, 2);
 	if(ret != MOTION_OK)
 	{
 		BSP_LCD_GLASS_DisplayString("Error7");
