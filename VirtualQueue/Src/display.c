@@ -4,7 +4,7 @@
 #include "mytype.h"
 
 static const uint16_t display_width = 800;
-static const uint16_t display_height = 400;
+static const uint16_t display_height = 480; // This is a hack to get rid of weird layer
 static const uint8_t display_rotation = 0;
 static uint8_t display_voffset;
 
@@ -124,6 +124,104 @@ uint8_t SPI_write_register(SPI_HandleTypeDef* hspi, uint8_t reg_to_sel, uint8_t*
 
 	return DISPLAY_OK;
 }
+
+/**
+ *  Select the register to write to and transmit the data using TxData
+ *	return true if expected status has been reached
+ *  return false if SPI_read has errors 
+ */
+bool wait_poll(SPI_HandleTypeDef* hspi,uint8_t reg_to_sel, uint8_t wait_flag) {
+	uint8_t RxData;
+	uint8_t ret;
+	// wait for the command to finish
+	while(1) {
+		RxData = 0;
+		ret = SPI_read_register(hspi, reg_to_sel, &RxData);
+		if(ret != DISPLAY_OK)
+			return false;
+		if(!(RxData & wait_flag))
+			return true;
+	}
+	// unreach but return to avoid compiler yelling
+	return false;
+}
+
+/**
+ *  Helper function for higher level rectangle drawing code
+ *
+ *  Y1 X----------------X1 Y1
+ *  |                      |
+ *	|					   |
+ *	|					   |
+ *	|					   |
+ *	Y  X----------------X1 Y
+ */
+void rect_helper(SPI_HandleTypeDef* hspi, int16_t x, int16_t y, int16_t x1, int16_t y1, uint16_t color, bool filled){
+	uint8_t TxData = 0;
+
+	// Set X
+	SPI_write_command(hspi, 0x91);
+	TxData = x;
+	SPI_write_data(hspi, &TxData);
+	SPI_write_command(hspi, 0x92);
+	TxData = x >> 8;
+	SPI_write_data(hspi, &TxData);
+
+	// Set Y
+	SPI_write_command(hspi, 0x93);
+	TxData = y;
+	SPI_write_data(hspi, &TxData);
+	SPI_write_command(hspi, 0x94);
+	TxData = y >> 8;
+	SPI_write_data(hspi, &TxData);
+
+	// set X1
+	SPI_write_command(hspi, 0x95);
+	TxData = x1;
+	SPI_write_data(hspi, &TxData);
+	SPI_write_command(hspi, 0x96);
+	TxData = x1 >> 8;
+	SPI_write_data(hspi, &TxData);
+
+	// set Y1
+	SPI_write_command(hspi, 0x97);
+	TxData = y1;
+	SPI_write_data(hspi, &TxData);
+	SPI_write_command(hspi, 0x98);
+	TxData = y1 >> 8;
+	SPI_write_data(hspi, &TxData);
+
+	// set Color
+	SPI_write_command(hspi, 0x63);
+	TxData = (color & 0xf800) >> 11;
+	SPI_write_data(hspi, &TxData);
+	SPI_write_command(hspi, 0x64);
+	TxData = (color & 0x07e0) >> 5;
+	SPI_write_data(hspi, &TxData);
+	SPI_write_command(hspi, 0x64);
+	TxData = color & 0x001f;
+	SPI_write_data(hspi, &TxData);
+
+	// Draw
+	SPI_write_command(hspi, RA8875_DCR);
+	if(filled == true) {
+		TxData = 0xB0;
+		SPI_write_data(hspi, &TxData);
+	} else {
+		TxData = 0x90;
+		SPI_write_data(hspi, &TxData);
+	}
+
+	wait_poll(hspi, RA8875_DCR, RA8875_DCR_LINESQUTRI_STATUS);
+}
+
+
+//////////////////////////////////////////////////////////////////////////////////
+//
+//  End of helper function
+//
+//////////////////////////////////////////////////////////////////////////////////
+
 
 /**
  * Initialize the PLL
@@ -253,6 +351,10 @@ uint8_t initialize_driverIC(SPI_HandleTypeDef* hspi){
 	return DISPLAY_OK;
 }
 
+/**
+ *  initialize the LCD driver and any HW required by the display.
+ *  Returns true if display is successfully been initialized
+ */
 bool initialize_display(SPI_HandleTypeDef *hspi) {
   uint8_t ret;
   uint8_t reg;
@@ -280,6 +382,9 @@ bool initialize_display(SPI_HandleTypeDef *hspi) {
   return true;
 }
 
+/**
+ *  Power on the display
+ */
 void display_on(SPI_HandleTypeDef *hspi, bool on){
 	uint8_t TxData = 0;
 
@@ -296,6 +401,10 @@ void display_on(SPI_HandleTypeDef *hspi, bool on){
 	return;
 }
 
+/**
+ *  Set the Extra General Purpose IO Register
+ *
+ */
 void GPIOX_on(SPI_HandleTypeDef *hspi, bool on){
 	uint8_t TxData = 0;
 
@@ -312,6 +421,9 @@ void GPIOX_on(SPI_HandleTypeDef *hspi, bool on){
 	return;
 }
 
+/**
+ *  Configure the PWM1 clock
+ */
 void PWM1_config(SPI_HandleTypeDef *hspi, bool on, uint8_t clock){
 	uint8_t TxData = 0;
 
@@ -328,10 +440,20 @@ void PWM1_config(SPI_HandleTypeDef *hspi, bool on, uint8_t clock){
 	return;
 }
 
+/**
+ * Configure the duty cycle of the PWM
+ *
+ */
 void PWM1_out(SPI_HandleTypeDef *hspi, uint8_t duty_cycle){
 	uint8_t TxData = duty_cycle;
 	SPI_write_register(hspi, RA8875_P1DCR, &TxData);
 }
 
-
+/**
+ *  Fill the screen with color
+ *
+ */
+void fill_screen(SPI_HandleTypeDef *hspi, uint16_t color) {
+	rect_helper(hspi, 0, 0, display_width - 1, display_height - 1, color, true);
+}
 

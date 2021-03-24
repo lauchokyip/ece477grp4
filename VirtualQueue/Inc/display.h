@@ -529,3 +529,4 @@ void display_on(SPI_HandleTypeDef *hspi, bool on);
 void GPIOX_on(SPI_HandleTypeDef *hspi, bool on);
 void PWM1_config(SPI_HandleTypeDef *hspi, bool on, uint8_t clock);
 void PWM1_out(SPI_HandleTypeDef *hspi, uint8_t duty_cycle);
+void fill_screen(SPI_HandleTypeDef *hspi, uint16_t color);

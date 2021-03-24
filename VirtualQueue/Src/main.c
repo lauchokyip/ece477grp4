@@ -111,6 +111,7 @@ int main(void)
   GPIOX_on(&hspi1, true);
   PWM1_config(&hspi1, true, RA8875_PWM_CLK_DIV1024);
   PWM1_out(&hspi1, 255);
+  fill_screen(&hspi1, RA8875_CYAN);
 
   /* USER CODE END 2 */
 
