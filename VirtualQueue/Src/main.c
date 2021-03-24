@@ -104,9 +104,13 @@ int main(void)
   MX_I2C1_Init();
   MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
- BSP_LCD_GLASS_DisplayString("hello");
-  initialize_display(&hspi1);
+  BSP_LCD_GLASS_DisplayString("hello");
 
+  initialize_display(&hspi1);
+  display_on(&hspi1, true);
+  GPIOX_on(&hspi1, true);
+  PWM1_config(&hspi1, true, RA8875_PWM_CLK_DIV1024);
+  PWM1_out(&hspi1, 255);
 
   /* USER CODE END 2 */
 
