@@ -198,7 +198,7 @@ void rect_helper(SPI_HandleTypeDef* hspi, int16_t x, int16_t y, int16_t x1, int1
 	SPI_write_command(hspi, 0x64);
 	TxData = (color & 0x07e0) >> 5;
 	SPI_write_data(hspi, &TxData);
-	SPI_write_command(hspi, 0x64);
+	SPI_write_command(hspi, 0x65);
 	TxData = color & 0x001f;
 	SPI_write_data(hspi, &TxData);
 
