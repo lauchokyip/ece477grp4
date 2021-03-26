@@ -5,12 +5,18 @@
 
 static const uint16_t display_width = 800;
 static const uint16_t display_height = 480; // This is a hack to get rid of weird layer
-static const uint8_t display_rotation = 0;
+
 static uint8_t display_voffset;
 
 #define SPI_CS_GPIO GPIOE
 #define SPI_CS_PIN GPIO_PIN_12
 #define RST_PIN GPIO_PIN_10
+
+//////////////////////////////////////////////////////////////////////////////////
+//
+//  Start of helper function
+//
+//////////////////////////////////////////////////////////////////////////////////
 
 /**
  * Select the register to read or write
@@ -218,7 +224,7 @@ void rect_helper(SPI_HandleTypeDef* hspi, int16_t x, int16_t y, int16_t x1, int1
 
 //////////////////////////////////////////////////////////////////////////////////
 //
-//  End of helper function
+//  Start of initialization function
 //
 //////////////////////////////////////////////////////////////////////////////////
 
@@ -449,6 +455,13 @@ void PWM1_out(SPI_HandleTypeDef *hspi, uint8_t duty_cycle){
 	SPI_write_register(hspi, RA8875_P1DCR, &TxData);
 }
 
+//////////////////////////////////////////////////////////////////////////////////
+//
+//  Start of  drawing function
+//
+//////////////////////////////////////////////////////////////////////////////////
+
+
 /**
  *  Fill the screen with color
  *
@@ -457,3 +470,135 @@ void fill_screen(SPI_HandleTypeDef *hspi, uint16_t color) {
 	rect_helper(hspi, 0, 0, display_width - 1, display_height - 1, color, true);
 }
 
+/**
+ *  Sets the display in text mode
+ *
+ */
+void text_mode(SPI_HandleTypeDef *hspi) {
+	uint8_t RxData = 0;
+	// Set text mode
+	SPI_read_register(hspi, RA8875_MWCR0, &RxData);
+	RxData |= RA8875_MWCR0_TXTMODE;
+	SPI_write_data(hspi, &RxData);
+
+	// Select internal (ROM) font
+	SPI_read_register(hspi, 0x21, &RxData);
+	RxData &= ~((1 << 7) | (1 << 5)); // clear bits 7 and 5
+	SPI_write_data(hspi, &RxData);
+}
+
+/**
+ *
+     Enable Cursor Visibility and Blink
+     Here we set bits 6 and 5 in 40h
+     As well as the set the blink rate in 44h
+     The rate is 0 through max 255
+     the lower the number the faster it blinks (00h is 1 frame time,
+     FFh is 256 Frames time.
+     Blink Time (sec) = BTCR[44h]x(1/Frame_rate)
+ *
+ */
+void cursor_blink(SPI_HandleTypeDef *hspi, uint8_t rate) {
+	uint8_t RxData = 0;
+	uint8_t TxData = 0;
+
+	// Set text mode
+	SPI_read_register(hspi, RA8875_MWCR0, &RxData);
+	RxData |= RA8875_MWCR0_CURSOR;
+	SPI_write_data(hspi, &RxData);
+
+	// Select internal (ROM) font
+	SPI_read_register(hspi, RA8875_MWCR0, &RxData);
+	RxData |= RA8875_MWCR0_BLINK;
+	SPI_write_data(hspi, &RxData);
+
+	TxData = rate;
+	SPI_write_register(hspi, RA8875_BTCR, &TxData);
+}
+
+/**
+ *  Set the location of the cursor
+ *
+ */
+void set_cursor(SPI_HandleTypeDef *hspi, uint16_t x, uint16_t y){
+	uint8_t TxData = 0;
+
+	TxData = x & 0xFF;
+	SPI_write_register(hspi, 0x2A, &TxData);
+
+	TxData = x >> 8;
+	SPI_write_register(hspi, 0x2B, &TxData);
+
+	TxData = y & 0xFF;
+	SPI_write_register(hspi, 0x2C, &TxData);
+
+	TxData = y >> 8;
+	SPI_write_register(hspi, 0x2D, &TxData);
+}
+
+/**
+ *  Write the string to the screen
+ */
+void text_write(SPI_HandleTypeDef *hspi, char* buffer, uint16_t len) {
+	SPI_write_command(hspi, RA8875_MRWC);
+
+	for(uint16_t i = 0; i < len; i++) {
+		uint8_t each_char = buffer[i];
+		SPI_write_data(hspi, &each_char);
+	}
+	HAL_Delay(1);
+}
+
+void clear_screen(SPI_HandleTypeDef *hspi) {
+	uint8_t TxData = 0;
+
+	TxData = RA8875_MCLR_START | RA8875_MCLR_FULL;
+	SPI_write_register(hspi, RA8875_MCLR, &TxData);
+}
+
+
+
+/**
+ *  Set the color of the text
+ *
+ */
+void set_text_color(SPI_HandleTypeDef *hspi, uint16_t text_color) {
+	uint8_t TxData = 0;
+	uint8_t RxData = 0;
+
+	// Set Fore Color
+	TxData = ((text_color & 0xf800) >> 11);
+	SPI_write_register(hspi, 0x63, &TxData);
+
+	TxData = ((text_color & 0x07e0) >> 5);
+	SPI_write_register(hspi, 0x64, &TxData);
+
+	TxData = text_color & 0x001f;
+	SPI_write_register(hspi, 0x65, &TxData);
+
+	// Set transparency flag
+	TxData = text_color & 0x001f;
+	SPI_read_register(hspi, 0x22, &RxData);
+	RxData |= (1 << 6);
+	SPI_write_data(hspi, &RxData);
+}
+
+
+/**
+ *  Enlarge the text, 4x zoom is the max
+ *
+ */
+void enlarge_text(SPI_HandleTypeDef *hspi, uint8_t zoom) {
+	uint8_t actual_zoom = zoom - 1;
+	uint8_t RxData = 0;
+
+	if(actual_zoom > 3)
+		actual_zoom = 3;
+
+	SPI_read_register(hspi, 0x22 , &RxData);
+	RxData &= ~(0xF);
+	RxData |= actual_zoom << 2;
+	RxData |= actual_zoom;
+	SPI_write_data(hspi, &RxData);
+
+}
