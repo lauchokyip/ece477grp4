@@ -23,7 +23,10 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <stdio.h>
+#include "retarget.h"
+#include "utility.h"
+#include "wifi_module.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -33,7 +36,6 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -45,15 +47,16 @@
 LCD_HandleTypeDef hlcd;
 
 UART_HandleTypeDef huart4;
+UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_LCD_Init(void);
+static void MX_USART2_UART_Init(void);
 static void MX_UART4_Init(void);
 /* USER CODE BEGIN PFP */
 
@@ -61,8 +64,7 @@ static void MX_UART4_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-int delay_time;
-uint8_t dataRx[10];
+
 /* USER CODE END 0 */
 
 /**
@@ -72,7 +74,7 @@ uint8_t dataRx[10];
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-  delay_time = 500;
+
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -82,6 +84,7 @@ int main(void)
 
   /* USER CODE BEGIN Init */
   BSP_LCD_GLASS_Init();
+
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -94,22 +97,38 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_LCD_Init();
+  MX_USART2_UART_Init();
   MX_UART4_Init();
   /* USER CODE BEGIN 2 */
-  uint8_t dataTx[] = "AT\r\n";
-  HAL_UART_Transmit(&huart4, dataTx, 4, 100);
-  HAL_UART_Receive_IT(&huart4, dataRx, 6);
+  //BSP_LCD_GLASS_DisplayString("Hello");
+  RetargetInit(&huart2);
+  printf("\r\nStarting\r\n");
+  esp8266_init(&huart4, 0, 0);
+  uint8_t data[] = "https://virtualqueue477.herokuapp.com/enterQueue?storeSecret=grp4&potenID=183f271f";
+  send_get(data, sizeof(data)/sizeof(uint8_t)-1);
+  /*printf("asking to send...\r\n");
+  uint8_t send[] = "AT+CIPSEND=67\r\n";
+  uint8_t data[] = "GET http://www.ptsv2.com/t/q25ox-1614529517/post?a=1 HTTP/1.1\r\n\r\n\r\n";
+  HAL_UART_Transmit(&huart4, send, sizeof(send)/sizeof(uint8_t), 100);
+  HAL_UART_Receive(&huart4, esp_recv_buf, 2000, 500);
+  printf("%s\r\n", esp_recv_buf);
+  clear_buf(esp_recv_buf, 2000);
+  printf("sending...\r\n");
+  HAL_UART_Transmit(&huart4, data, sizeof(data)/sizeof(uint8_t), 100);
+  HAL_UART_Receive(&huart4, esp_recv_buf, 2000, 2000);
+  printf("%s\r\n", esp_recv_buf);
+  clear_buf(esp_recv_buf, 2000);
+  printf("DONE\r\n");*/
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+
   while (1)
   {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_2);
-	HAL_Delay(delay_time);
   }
   /* USER CODE END 3 */
 }
@@ -149,7 +168,9 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_RTC|RCC_PERIPHCLK_UART4;
+  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_RTC|RCC_PERIPHCLK_USART2
+                              |RCC_PERIPHCLK_UART4;
+  PeriphClkInit.Usart2ClockSelection = RCC_USART2CLKSOURCE_PCLK1;
   PeriphClkInit.Uart4ClockSelection = RCC_UART4CLKSOURCE_PCLK1;
   PeriphClkInit.RTCClockSelection = RCC_RTCCLKSOURCE_LSI;
   if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
@@ -238,6 +259,41 @@ static void MX_UART4_Init(void)
 }
 
 /**
+  * @brief USART2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART2_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART2_Init 0 */
+
+  /* USER CODE END USART2_Init 0 */
+
+  /* USER CODE BEGIN USART2_Init 1 */
+
+  /* USER CODE END USART2_Init 1 */
+  huart2.Instance = USART2;
+  huart2.Init.BaudRate = 115200;
+  huart2.Init.WordLength = UART_WORDLENGTH_8B;
+  huart2.Init.StopBits = UART_STOPBITS_1;
+  huart2.Init.Parity = UART_PARITY_NONE;
+  huart2.Init.Mode = UART_MODE_TX_RX;
+  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
+  huart2.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+  huart2.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+  if (HAL_UART_Init(&huart2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART2_Init 2 */
+
+  /* USER CODE END USART2_Init 2 */
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -250,6 +306,7 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
+  __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, GPIO_PIN_RESET);
@@ -264,13 +321,9 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
-{
-	delay_time = 100;
-	BSP_LCD_GLASS_DisplayString(dataRx);
-	//HAL_Delay(1000);
-	//HAL_UART_Receive_IT(&huart4, dataRx, 2);
-}
+
+
+
 /* USER CODE END 4 */
 
 /**
@@ -297,7 +350,7 @@ void assert_failed(char *file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */
   /* User can add his own implementation to report the file name and line number,
-     tex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+     tex: //printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */

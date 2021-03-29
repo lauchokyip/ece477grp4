@@ -20,10 +20,6 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "adc.h"
-#include "lcd.h"
-#include "usart.h"
-#include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -95,7 +91,6 @@ int main(void)
   MX_GPIO_Init();
   MX_LCD_Init();
   MX_UART4_Init();
-  MX_ADC1_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
   //BSP_LCD_GLASS_DisplayString("Hello");
@@ -225,7 +220,6 @@ void esp8266Init() {
 }
 
 void sendCommand(uint8_t msg[], int size, int response_size) {
-	//int rsize = size + response_length;
 	HAL_UART_Transmit(&huart4, msg, size, 100);
 	HAL_UART_Receive_IT(&huart4, rbuf, size + response_size);
 }
