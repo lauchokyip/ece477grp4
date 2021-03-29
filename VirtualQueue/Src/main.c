@@ -27,6 +27,7 @@
 #include "retarget.h"
 #include "utility.h"
 #include "wifi_module.h"
+#include "qr_reader.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -50,6 +51,7 @@ UART_HandleTypeDef huart4;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
+uint8_t data[8];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -100,25 +102,9 @@ int main(void)
   MX_USART2_UART_Init();
   MX_UART4_Init();
   /* USER CODE BEGIN 2 */
-  //BSP_LCD_GLASS_DisplayString("Hello");
-  RetargetInit(&huart2);
-  printf("\r\nStarting\r\n");
   esp8266_init(&huart4, 0, 0);
-  uint8_t data[] = "https://virtualqueue477.herokuapp.com/enterQueue?storeSecret=grp4&potenID=183f271f";
-  send_get(data, sizeof(data)/sizeof(uint8_t)-1);
-  /*printf("asking to send...\r\n");
-  uint8_t send[] = "AT+CIPSEND=67\r\n";
-  uint8_t data[] = "GET http://www.ptsv2.com/t/q25ox-1614529517/post?a=1 HTTP/1.1\r\n\r\n\r\n";
-  HAL_UART_Transmit(&huart4, send, sizeof(send)/sizeof(uint8_t), 100);
-  HAL_UART_Receive(&huart4, esp_recv_buf, 2000, 500);
-  printf("%s\r\n", esp_recv_buf);
-  clear_buf(esp_recv_buf, 2000);
-  printf("sending...\r\n");
-  HAL_UART_Transmit(&huart4, data, sizeof(data)/sizeof(uint8_t), 100);
-  HAL_UART_Receive(&huart4, esp_recv_buf, 2000, 2000);
-  printf("%s\r\n", esp_recv_buf);
-  clear_buf(esp_recv_buf, 2000);
-  printf("DONE\r\n");*/
+  init_qr_scanner(&huart2);
+  BSP_LCD_GLASS_DisplayString("READY");
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -274,7 +260,7 @@ static void MX_USART2_UART_Init(void)
 
   /* USER CODE END USART2_Init 1 */
   huart2.Instance = USART2;
-  huart2.Init.BaudRate = 115200;
+  huart2.Init.BaudRate = 9600;
   huart2.Init.WordLength = UART_WORDLENGTH_8B;
   huart2.Init.StopBits = UART_STOPBITS_1;
   huart2.Init.Parity = UART_PARITY_NONE;
@@ -321,8 +307,15 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-
-
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+	if (huart == &huart2) {
+		BSP_LCD_GLASS_DisplayString("BRANCH");
+		qr_scan_received();
+	} else {
+		BSP_LCD_GLASS_DisplayString("BADINT");
+	}
+}
 
 /* USER CODE END 4 */
 

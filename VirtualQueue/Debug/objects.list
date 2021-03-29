@@ -21,6 +21,7 @@
 "Src/gpio.o"
 "Src/json.o"
 "Src/main.o"
+"Src/qr_reader.o"
 "Src/retarget.o"
 "Src/stm32l476g_discovery.o"
 "Src/stm32l476g_discovery_glass_lcd.o"
