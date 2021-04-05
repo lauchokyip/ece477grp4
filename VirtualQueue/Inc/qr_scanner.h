@@ -8,12 +8,14 @@
 #include "wifi_module.h"
 
 #define QR_SIZE 8
-#define POTID_LEN 74
+#define SCAN_URL_LEN 77
 
 extern uint8_t qr_buf[QR_SIZE]; // buffer to hold 1 qr code
 UART_HandleTypeDef *qr_huart; // huart for qr scanner
+extern int qr_scan_pending;
 
-void init_qr_scanner(UART_HandleTypeDef* huart);
-void send_qr_scan(uint8_t* qr_code);
+void qr_scanner_init(UART_HandleTypeDef* huart);
+void qr_scan_received(void);
+void send_qr_scan(char* qr_code);
 
 #endif
