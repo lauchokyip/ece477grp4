@@ -23,6 +23,7 @@
 #include "stm32l4xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "wifi_module.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -56,6 +57,7 @@
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
+extern UART_HandleTypeDef huart4;
 extern UART_HandleTypeDef huart1;
 /* USER CODE BEGIN EV */
 
@@ -209,6 +211,30 @@ void USART1_IRQHandler(void)
   /* USER CODE BEGIN USART1_IRQn 1 */
 
   /* USER CODE END USART1_IRQn 1 */
+}
+
+/**
+  * @brief This function handles UART4 global interrupt.
+  */
+void UART4_IRQHandler(void)
+{
+  /* USER CODE BEGIN UART4_IRQn 0 */
+  if(RESET != __HAL_UART_GET_FLAG(esp_huart, UART_FLAG_IDLE))   //Judging whether it is idle interruption
+  {
+	__HAL_UART_CLEAR_IDLEFLAG(esp_huart);                       //Clear idle interrupt sign (otherwise it will continue to enter interrupt)
+	if (wait_for_send_ok == 1) {                  		//Call interrupt handler
+		wait_for_send_ok = 0;
+		good_for_send = 1;
+	} else if (wait_for_message_response == 1) {
+		wait_for_message_response = 0;
+		message_pending_handling = 1;
+	}
+  }
+  /* USER CODE END UART4_IRQn 0 */
+  HAL_UART_IRQHandler(&huart4);
+  /* USER CODE BEGIN UART4_IRQn 1 */
+
+  /* USER CODE END UART4_IRQn 1 */
 }
 
 /* USER CODE BEGIN 1 */

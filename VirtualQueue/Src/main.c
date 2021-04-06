@@ -117,9 +117,19 @@ int main(void)
 
   while (1)
   {
-	if (qr_scan_pending > 0) {
+	if (qr_scan_pending == 1) {
 		printf("BEGIN SEND SCAN\r\n");
 		qr_scan_received();
+	}
+	if (message_pending_handling == 1) {
+		handle_message_response();
+	}
+	if (message_queue_head != NULL) {
+		if (ready_for_next_message == 1) {
+			get_ok_to_send();
+		} else if (good_for_send == 1) {
+			send_message();
+		}
 	}
     /* USER CODE END WHILE */
 
@@ -355,9 +365,9 @@ static void MX_GPIO_Init(void)
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
 	//printf("Interrupt\r\n");
-	if (huart == &huart1) {
+	if (huart == qr_huart) {
 		//BSP_LCD_GLASS_DisplayString("SCAN");
-		++qr_scan_pending;
+		qr_scan_pending = 1;
 	}
 }
 

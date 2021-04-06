@@ -2,6 +2,7 @@
 
 uint8_t qr_buf[QR_SIZE];
 int qr_scan_pending;
+UART_HandleTypeDef *qr_huart;
 
 // call to set up first qr scan interrupt
 // pass the UART_HandleTypeDef of the uart channel the qr scanner uses
@@ -11,7 +12,7 @@ void qr_scanner_init(UART_HandleTypeDef* huart) {
 	HAL_UART_Receive_IT(qr_huart, qr_buf, QR_SIZE);
 }
 
-// call this function in the corresponding HAL_UART_RxCpltCallback branch
+// set a flag to call this in RxComplete callback. DO NOT CALL IT FROM THE CALLBACK.
 void qr_scan_received(void) {
 	// copy the qr code to a new array to prevent it from being overwritten by a new scan
 	printf("Got QR scan: %s\r\n", qr_buf);
@@ -22,8 +23,8 @@ void qr_scan_received(void) {
 	printf("\r\n");
 	char qr_to_send[QR_SIZE];
 	memcpy(qr_to_send, qr_buf, QR_SIZE);
-	send_qr_scan(qr_to_send); // TODO: send qr scan to server using wifi
-	--qr_scan_pending;
+	qr_scan_pending = 0;
+	send_qr_scan(qr_to_send);
 	BSP_LCD_GLASS_DisplayString("DONE");
 	HAL_UART_Receive_IT(qr_huart, qr_buf, QR_SIZE);
 }
@@ -37,5 +38,5 @@ void send_qr_scan(char* qr_code) {
 	str_to_uint(url_str, url, SCAN_URL_LEN+QR_SIZE);
 	printf("url: %s\r\n\r\n", url);
 	BSP_LCD_GLASS_DisplayString("WIFI");
-	send_get(url, SCAN_URL_LEN + QR_SIZE);
+	new_message(1, url, SCAN_URL_LEN + QR_SIZE);
 }

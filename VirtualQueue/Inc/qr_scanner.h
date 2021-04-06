@@ -11,7 +11,7 @@
 #define SCAN_URL_LEN 77
 
 extern uint8_t qr_buf[QR_SIZE]; // buffer to hold 1 qr code
-UART_HandleTypeDef *qr_huart; // huart for qr scanner
+extern UART_HandleTypeDef *qr_huart; // huart for qr scanner
 extern int qr_scan_pending;
 
 void qr_scanner_init(UART_HandleTypeDef* huart);
