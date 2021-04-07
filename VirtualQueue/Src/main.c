@@ -50,6 +50,7 @@ LCD_HandleTypeDef hlcd;
 UART_HandleTypeDef huart4;
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
+DMA_HandleTypeDef hdma_uart4_rx;
 
 /* USER CODE BEGIN PV */
 /* USER CODE END PV */
@@ -57,6 +58,7 @@ UART_HandleTypeDef huart2;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
 static void MX_LCD_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_UART4_Init(void);
@@ -99,6 +101,7 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_LCD_Init();
   MX_USART2_UART_Init();
   MX_UART4_Init();
@@ -106,7 +109,7 @@ int main(void)
   /* USER CODE BEGIN 2 */
   RetargetInit(&huart2);
   printf("\r\nStarting\r\n");
-  esp8266_init(&huart4, 0, 0);
+  esp8266_init(&huart4, 0, 1);
   qr_scanner_init(&huart1);
   //BSP_LCD_GLASS_DisplayString("OK");
   printf("QR INIT DONE\r\n");
@@ -335,6 +338,22 @@ static void MX_USART2_UART_Init(void)
 }
 
 /**
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void)
+{
+
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA2_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA2_Channel5_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA2_Channel5_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Channel5_IRQn);
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -364,9 +383,9 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-	//printf("Interrupt\r\n");
+	printf("RX CPLT CALLBACK\r\n");
 	if (huart == qr_huart) {
-		//BSP_LCD_GLASS_DisplayString("SCAN");
+		printf("QR INT\r\n");
 		qr_scan_pending = 1;
 	}
 }

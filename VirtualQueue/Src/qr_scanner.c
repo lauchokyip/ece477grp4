@@ -26,17 +26,18 @@ void qr_scan_received(void) {
 	qr_scan_pending = 0;
 	send_qr_scan(qr_to_send);
 	BSP_LCD_GLASS_DisplayString("DONE");
+	memset(qr_buf, 0, QR_SIZE);
 	HAL_UART_Receive_IT(qr_huart, qr_buf, QR_SIZE);
 }
 
 // sets up and sends get request with qr code
 void send_qr_scan(char* qr_code) {
-	uint8_t url[SCAN_URL_LEN + QR_SIZE];
-	char url_str[SCAN_URL_LEN + QR_SIZE];
+	uint8_t url[SCAN_URL_LEN + QR_SIZE-1];
+	char url_str[SCAN_URL_LEN + QR_SIZE-1];
 	sprintf(url_str, "https://virtualqueue477.herokuapp.com/barcodeScan?storeSecret=grp4&IDscanned=%s", qr_code);
 	printf("url_str: %s\r\n\r\n", url_str);
-	str_to_uint(url_str, url, SCAN_URL_LEN+QR_SIZE);
+	str_to_uint(url_str, url, SCAN_URL_LEN+QR_SIZE-1);
 	printf("url: %s\r\n\r\n", url);
 	BSP_LCD_GLASS_DisplayString("WIFI");
-	new_message(1, url, SCAN_URL_LEN + QR_SIZE);
+	new_message(1, url, SCAN_URL_LEN + QR_SIZE-1);
 }

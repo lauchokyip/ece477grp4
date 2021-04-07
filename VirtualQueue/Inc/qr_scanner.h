@@ -7,7 +7,7 @@
 #include "utility.h"
 #include "wifi_module.h"
 
-#define QR_SIZE 8
+#define QR_SIZE 9
 #define SCAN_URL_LEN 77
 
 extern uint8_t qr_buf[QR_SIZE]; // buffer to hold 1 qr code

@@ -1,14 +1,5 @@
 #include "utility.h"
 
-// clean out a buffer with end of string chars
-void clear_buf(uint8_t* buf, int buf_size) {
-	int i;
-	for (i = 0; i < buf_size; ++i) {
-
-		buf[i] = '\0';
-	}
-}
-
 // count the number of digits in a number
 int count_digits(int n) {
 	int digits = 0;

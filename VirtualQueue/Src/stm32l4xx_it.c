@@ -57,6 +57,7 @@
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
+extern DMA_HandleTypeDef hdma_uart4_rx;
 extern UART_HandleTypeDef huart4;
 extern UART_HandleTypeDef huart1;
 /* USER CODE BEGIN EV */
@@ -219,22 +220,37 @@ void USART1_IRQHandler(void)
 void UART4_IRQHandler(void)
 {
   /* USER CODE BEGIN UART4_IRQn 0 */
-  if(RESET != __HAL_UART_GET_FLAG(esp_huart, UART_FLAG_IDLE))   //Judging whether it is idle interruption
-  {
-	__HAL_UART_CLEAR_IDLEFLAG(esp_huart);                       //Clear idle interrupt sign (otherwise it will continue to enter interrupt)
-	if (wait_for_send_ok == 1) {                  		//Call interrupt handler
-		wait_for_send_ok = 0;
-		good_for_send = 1;
-	} else if (wait_for_message_response == 1) {
-		wait_for_message_response = 0;
-		message_pending_handling = 1;
-	}
-  }
+
   /* USER CODE END UART4_IRQn 0 */
   HAL_UART_IRQHandler(&huart4);
   /* USER CODE BEGIN UART4_IRQn 1 */
-
+  if(RESET != __HAL_UART_GET_FLAG(&huart4, UART_FLAG_IDLE)) { //Judging whether it is idle interruption
+  	__HAL_UART_CLEAR_IDLEFLAG(&huart4);
+  	HAL_UART_DMAStop(&huart4);
+  	//uint8_t data_length  = 2000 - __HAL_DMA_GET_COUNTER(&hdma_uart4_rx);
+  	if (wait_for_send_ok == 1) {
+  		wait_for_send_ok = 0;
+  		good_for_send = 1;
+  	} else if (wait_for_message_response == 1) {
+  		wait_for_message_response = 0;
+  		message_pending_handling = 1;
+  	}
+  }
   /* USER CODE END UART4_IRQn 1 */
+}
+
+/**
+  * @brief This function handles DMA2 channel5 global interrupt.
+  */
+void DMA2_Channel5_IRQHandler(void)
+{
+  /* USER CODE BEGIN DMA2_Channel5_IRQn 0 */
+
+  /* USER CODE END DMA2_Channel5_IRQn 0 */
+  HAL_DMA_IRQHandler(&hdma_uart4_rx);
+  /* USER CODE BEGIN DMA2_Channel5_IRQn 1 */
+
+  /* USER CODE END DMA2_Channel5_IRQn 1 */
 }
 
 /* USER CODE BEGIN 1 */
