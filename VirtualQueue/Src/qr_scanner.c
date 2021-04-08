@@ -9,7 +9,6 @@ UART_HandleTypeDef *qr_huart;
 void qr_scanner_init(UART_HandleTypeDef* huart) {
 	qr_huart = huart;
 	qr_scan_pending = 0;
-	HAL_UART_Receive_IT(qr_huart, qr_buf, QR_SIZE);
 }
 
 // set a flag to call this in RxComplete callback. DO NOT CALL IT FROM THE CALLBACK.

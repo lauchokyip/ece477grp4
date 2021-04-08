@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include "qr_scanner.h"
 
 #define SEND_CMD_LEN 13
 #define GET_LEN 78

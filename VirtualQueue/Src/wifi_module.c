@@ -13,7 +13,7 @@ UART_HandleTypeDef *esp_huart;
 // pass huart for esp, connection=0 for heroku, 1 for ptsv2
 // TODO: set up to take in wifi name and password as params
 // TODO: add set up verification checks
-void esp8266_init(UART_HandleTypeDef* huart, int connection, int fast) {
+void esp8266_init(UART_HandleTypeDef* huart, int wifi, int fast) {
 	esp_huart = huart;
 	wait_for_send_ok = 0;
 	wait_for_message_response = 0;
@@ -21,7 +21,6 @@ void esp8266_init(UART_HandleTypeDef* huart, int connection, int fast) {
 	ready_for_next_message = 1;
 	message_pending_handling = 0;
 	message_queue_head = NULL;
-	int wifi = 1;
 
 	// reset
 	if (fast != 1) {
@@ -30,9 +29,6 @@ void esp8266_init(UART_HandleTypeDef* huart, int connection, int fast) {
 		HAL_UART_Transmit(esp_huart, reset, sizeof(reset)/sizeof(uint8_t), 100);
 		HAL_UART_Receive(esp_huart, esp_recv_buf, 2000, 5000);
 		printf("%s\r\n", esp_recv_buf);
-		if (strstr(esp_recv_buf, "WIFI GOT IP") != NULL) {
-			wifi = 0;
-		}
 		memset(esp_recv_buf, 0, 2000);
 
 		// set mode to station/client
@@ -41,9 +37,6 @@ void esp8266_init(UART_HandleTypeDef* huart, int connection, int fast) {
 		HAL_UART_Transmit(esp_huart, mode, sizeof(mode)/sizeof(uint8_t), 100);
 		HAL_UART_Receive(esp_huart, esp_recv_buf, 2000, 500);
 		printf("%s\r\n", esp_recv_buf);
-		if (strstr(esp_recv_buf, "WIFI GOT IP") != NULL) {
-			wifi = 0;
-		}
 		memset(esp_recv_buf, 0, 2000);
 
 		// set connections to 1 at a time
@@ -52,34 +45,57 @@ void esp8266_init(UART_HandleTypeDef* huart, int connection, int fast) {
 		HAL_UART_Transmit(esp_huart, numcons, sizeof(numcons)/sizeof(uint8_t), 100);
 		HAL_UART_Receive(esp_huart, esp_recv_buf, 2000, 500);
 		printf("%s\r\n", esp_recv_buf);
-		if (strstr(esp_recv_buf, "WIFI GOT IP") != NULL) {
-			wifi = 0;
-		}
 		memset(esp_recv_buf, 0, 2000);
+	}
 
-		// connect to given wifi
-		if (wifi == 1) {
-		  printf("connect to wifi...\r\n");
+	// connect to given wifi
+	if (wifi != 0) {
+	  printf("connect to wifi...\r\n");
+	  if (wifi == 2) {
 		  uint8_t connect[] = "AT+CWJAP=\"TEST-HOTSPOT\",\"65c9O21=\"\r\n";
 		  HAL_UART_Transmit(esp_huart, connect, sizeof(connect)/sizeof(uint8_t), 100);
 		  HAL_UART_Receive(esp_huart, esp_recv_buf, 2000, 10000);
 		  printf("%s\r\n", esp_recv_buf);
 		  memset(esp_recv_buf, 0, 2000);
-		}
+	  } else {
+		  uint8_t wifi_name[100];
+		  memset(wifi_name, 0, 100);
+		  printf("Please scan QR code for WiFi name:\r\n");
+		  while (wifi_name[0] == 0) {
+			  HAL_UART_Receive(qr_huart, wifi_name, 100, 1000);
+		  }
+		  printf("%s\r\n", wifi_name);
+		  wifi_name[strlen(wifi_name)-1] = 0; // remove ending newline
+
+		  uint8_t wifi_pass[100];
+		  memset(wifi_pass, 0, 100);
+		  printf("Please scan QR code for WiFi password:\r\n");
+		  while (wifi_pass[0] == 0) {
+			  HAL_UART_Receive(qr_huart, wifi_pass, 100, 1000);
+		  }
+		  printf("%s\r\n", wifi_pass);
+		  wifi_pass[strlen(wifi_pass)-1] = 0; // remove ending newline
+
+		  int c_size = strlen(wifi_name) + strlen(wifi_pass) + 16;
+		  uint8_t connect[c_size];
+		  char connect_str[c_size];
+		  sprintf(connect_str, "AT+CWJAP=\"%s\",\"%s\"\r\n", wifi_name, wifi_pass);
+		  printf("Connection command: %s\r\n", connect_str);
+		  str_to_uint(connect_str, connect, 216);
+		  HAL_UART_Transmit(esp_huart, connect, sizeof(connect)/sizeof(uint8_t), 100);
+		  while (strstr(esp_recv_buf, "WIFI GOT IP") == NULL) {
+			  HAL_UART_Receive(esp_huart, esp_recv_buf, 2000, 5000);
+		  }
+		  printf("%s\r\n", esp_recv_buf);
+		  memset(esp_recv_buf, 0, 2000);
+	  }
 	}
 
 	// start tcp connection to server
-	if (connection == 0) {
-		printf("connect to VQ web server...\r\n");
-		uint8_t start[] = "AT+CIPSTART=\"TCP\",\"virtualqueue477.herokuapp.com\",80\r\n";
-		HAL_UART_Transmit(esp_huart, start, sizeof(start)/sizeof(uint8_t), 100);
-		HAL_UART_Receive(esp_huart, esp_recv_buf, 2000, 5000);
-	} else if (connection == 1) {
-		//printf("connect to ptsv2...\r\n");
-		uint8_t start[] = "AT+CIPSTART=\"TCP\",\"www.ptsv2.com\",80\r\n";
-		HAL_UART_Transmit(esp_huart, start, sizeof(start)/sizeof(uint8_t), 100);
-		HAL_UART_Receive(esp_huart, esp_recv_buf, 2000, 5000);
-	}
+	printf("connect to VQ web server...\r\n");
+	uint8_t start[] = "AT+CIPSTART=\"TCP\",\"virtualqueue477.herokuapp.com\",80\r\n";
+	HAL_UART_Transmit(esp_huart, start, sizeof(start)/sizeof(uint8_t), 100);
+	HAL_UART_Receive(esp_huart, esp_recv_buf, 2000, 5000);
 	tcp_connected = 1;
 	tcp_wait = 0;
 	printf("%s\r\n", esp_recv_buf);

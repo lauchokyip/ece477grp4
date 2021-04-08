@@ -109,8 +109,9 @@ int main(void)
   /* USER CODE BEGIN 2 */
   RetargetInit(&huart2);
   printf("\r\nStarting\r\n");
-  esp8266_init(&huart4, 0, 1);
-  qr_scanner_init(&huart1);
+  qr_scanner_init(&huart1); // note - THIS SHOULD BE CALLED BEFORE esp8266_init()
+  esp8266_init(&huart4, 0, 0);
+  HAL_UART_Receive_IT(qr_huart, qr_buf, QR_SIZE); // note - CALL THIS HERE so that esp8266_init() can use QR scanning for WiFi if needed
   //BSP_LCD_GLASS_DisplayString("OK");
   printf("QR INIT DONE\r\n");
   /* USER CODE END 2 */
