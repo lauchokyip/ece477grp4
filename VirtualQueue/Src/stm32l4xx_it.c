@@ -59,7 +59,6 @@
 /* External variables --------------------------------------------------------*/
 extern DMA_HandleTypeDef hdma_uart4_rx;
 extern UART_HandleTypeDef huart4;
-extern UART_HandleTypeDef huart1;
 /* USER CODE BEGIN EV */
 
 /* USER CODE END EV */
@@ -201,20 +200,6 @@ void SysTick_Handler(void)
 /******************************************************************************/
 
 /**
-  * @brief This function handles USART1 global interrupt.
-  */
-void USART1_IRQHandler(void)
-{
-  /* USER CODE BEGIN USART1_IRQn 0 */
-
-  /* USER CODE END USART1_IRQn 0 */
-  HAL_UART_IRQHandler(&huart1);
-  /* USER CODE BEGIN USART1_IRQn 1 */
-
-  /* USER CODE END USART1_IRQn 1 */
-}
-
-/**
   * @brief This function handles UART4 global interrupt.
   */
 void UART4_IRQHandler(void)
@@ -229,11 +214,23 @@ void UART4_IRQHandler(void)
   	HAL_UART_DMAStop(&huart4);
   	//uint8_t data_length  = 2000 - __HAL_DMA_GET_COUNTER(&hdma_uart4_rx);
   	if (wait_for_send_ok == 1) {
-  		wait_for_send_ok = 0;
-  		good_for_send = 1;
+  		if (strstr(esp_recv_buf, ">") == NULL) {
+			HAL_UART_Receive_DMA(esp_huart, esp_recv_buf, 2000);
+			printf("Not good to send: %s\r\n", esp_recv_buf);
+			return;
+		} else {
+			wait_for_send_ok = 0;
+			good_for_send = 1;
+		}
   	} else if (wait_for_message_response == 1) {
-  		wait_for_message_response = 0;
-  		message_pending_handling = 1;
+  		if (strstr(esp_recv_buf, "HTTP") == NULL) {
+			HAL_UART_Receive_DMA(esp_huart, esp_recv_buf, 2000);
+			printf("Not real response: %s\r\n", esp_recv_buf);
+			return;
+		} else {
+			wait_for_message_response = 0;
+			message_pending_handling = 1;
+		}
   	}
   }
   /* USER CODE END UART4_IRQn 1 */

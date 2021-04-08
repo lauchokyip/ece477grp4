@@ -27,16 +27,13 @@ extern int message_pending_handling;
 extern UART_HandleTypeDef *esp_huart; // huart for ESP-01
 
 WifiMessage* message_queue_head;
-int tcp_connected;
-int tcp_wait;
 
 void esp8266_init(UART_HandleTypeDef*, int, int); // pass huart for esp, connection=0 for heroku, 1 for ptsv2
-void send_get(uint8_t*, int);
-void handle_esp_response(UART_HandleTypeDef);
 void new_message(int, uint8_t*, int);
 void get_ok_to_send();
 void send_message();
 void handle_message_response();
-void tcp_connect();
+void send_entry();
+void send_exit();
 
 #endif

@@ -96,42 +96,10 @@ void esp8266_init(UART_HandleTypeDef* huart, int wifi, int fast) {
 	uint8_t start[] = "AT+CIPSTART=\"TCP\",\"virtualqueue477.herokuapp.com\",80\r\n";
 	HAL_UART_Transmit(esp_huart, start, sizeof(start)/sizeof(uint8_t), 100);
 	HAL_UART_Receive(esp_huart, esp_recv_buf, 2000, 5000);
-	tcp_connected = 1;
-	tcp_wait = 0;
 	printf("%s\r\n", esp_recv_buf);
 	memset(esp_recv_buf, 0, 2000);
 	__HAL_UART_ENABLE_IT(esp_huart, UART_IT_IDLE); // enable IDLE line detection as message length is variable
 	printf("ESP8266 INIT COMPLETE\r\n");
-}
-
-// sends a get request to the given url
-void send_get(uint8_t* url, int url_len) {
-	int digits = count_digits(url_len + GET_LEN);
-	//printf("DIGITS=%d\r\n", digits);
-
-	uint8_t send_cmd[digits + SEND_CMD_LEN];
-	char send_cmd_str[digits + SEND_CMD_LEN];
-	sprintf(send_cmd_str, "AT+CIPSEND=%d\r\n", url_len + GET_LEN);
-	str_to_uint(send_cmd_str, send_cmd, digits + SEND_CMD_LEN);
-
-	uint8_t data[url_len + GET_LEN];
-	char data_str[url_len + GET_LEN];
-	sprintf(data_str, "GET %s HTTP/1.1\r\nHost: virtualqueue477.herokuapp.com\r\n\r\n", url);
-	str_to_uint(data_str, data, url_len + GET_LEN);
-
-	printf("asking to send...\r\n");
-	BSP_LCD_GLASS_DisplayString("ASK ");
-	HAL_UART_Transmit(esp_huart, send_cmd, sizeof(send_cmd)/sizeof(uint8_t), 100);
-	HAL_UART_Receive(esp_huart, esp_recv_buf, 2000, 5000);
-	printf("%s\r\n", esp_recv_buf);
-    memset(esp_recv_buf, 0, 2000);
-    printf("sending...\r\n");
-    BSP_LCD_GLASS_DisplayString("SEND");
-    HAL_UART_Transmit(esp_huart, data, sizeof(data)/sizeof(uint8_t), 100);
-    HAL_UART_Receive(esp_huart, esp_recv_buf, 2000, 5000);
-    printf("%s\r\n", esp_recv_buf);
-    memset(esp_recv_buf, 0, 2000);
-    printf("GET sent\r\n");
 }
 
 void new_message(int type, uint8_t* url, int url_len) {
@@ -176,13 +144,6 @@ void get_ok_to_send() {
 }
 
 void send_message() {
-	if (strstr(esp_recv_buf, ">") == NULL) {
-		wait_for_send_ok = 1;
-		good_for_send = 0;
-		HAL_UART_Receive_DMA(esp_huart, esp_recv_buf, 2000);
-		printf("Not good to send: %s\r\n", esp_recv_buf);
-		return;
-	}
 	printf("OK TO SEND:\r\n");
 	printf("%s\r\n", esp_recv_buf);
 	good_for_send = 0;
@@ -203,14 +164,6 @@ void send_message() {
 }
 
 void handle_message_response() {
-	if (strstr(esp_recv_buf, "HTTP") == NULL) {
-		wait_for_message_response = 1;
-		message_pending_handling = 0;
-		HAL_UART_Receive_DMA(esp_huart, esp_recv_buf, 2000);
-		printf("Not real response: %s\r\n", esp_recv_buf);
-		return;
-	}
-	tcp_connected = 0;
 	printf("Response: %s\r\n", esp_recv_buf);
 	WifiMessage *m = message_queue_head;
 	if (m->type == 1) { // QR scan
@@ -218,7 +171,7 @@ void handle_message_response() {
 		// parse QR JSON
 		// determine action - nothing or begin temp
 	} else if (m->type == 2) { // things w/o data - exit, tempError, unauthEntry
-		printf("WAS NO DATA TYPE\r\n");
+		printf("WAS NO DATA TYPE (EXIT, TEMP ERROR, UNAUTH ENTRY)\r\n");
 	} else if (m->type == 3) { // entry
 		// determine if allowed
 		printf("WAS ENTRY\r\n");
@@ -235,14 +188,15 @@ void handle_message_response() {
 	printf("DONE HANDLING RESPONSE\r\n");
 }
 
-void tcp_connect() {
-	printf("connect to VQ web server...\r\n");
-	uint8_t start[] = "AT+CIPSTART=\"TCP\",\"virtualqueue477.herokuapp.com\",80\r\n";
-	HAL_UART_Transmit(esp_huart, start, sizeof(start)/sizeof(uint8_t), 100);
-	HAL_UART_Receive_DMA(esp_huart, esp_recv_buf, 2000);
+void send_entry() {
+	uint8_t url[] = "https://virtualqueue477.herokuapp.com/enteredStore?storeSecret=grp4";
+	new_message(3, url, sizeof(url)/sizeof(uint8_t)-1);
 }
 
-
+void send_exit() {
+	uint8_t url[] = "https://virtualqueue477.herokuapp.com/leftStore?storeSecret=grp4";
+	new_message(2, url, sizeof(url)/sizeof(uint8_t)-1);
+}
 
 
 /* PUT THE FOLLOWING IN THE INTERRUPT HANDLER (not callback the real one) to deal with IDLE
