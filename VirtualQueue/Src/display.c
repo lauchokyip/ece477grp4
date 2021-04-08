@@ -1,10 +1,14 @@
 #include "stm32l4xx_hal.h"
 #include "stm32l4xx_hal_spi.h"
+#include "stdio.h"
+#include "stdlib.h"
+#include "string.h"
 #include "display.h"
 #include "mytype.h"
 
 static const uint16_t display_width = 800;
 static const uint16_t display_height = 480; // This is a hack to get rid of weird layer
+static const uint8_t next_line_height = 35;
 
 static uint8_t display_voffset;
 
@@ -602,3 +606,64 @@ void enlarge_text(SPI_HandleTypeDef *hspi, uint8_t zoom) {
 	SPI_write_data(hspi, &RxData);
 
 }
+
+/**
+ * Initialize the display to our settings
+ *
+ */
+void main_display_init(SPI_HandleTypeDef *hspi) {
+	 initialize_display(hspi); // initialize display
+	 display_on(hspi, true); // turn on display
+	 GPIOX_on(hspi, true);  // Enable TFT - display enable tied to GPIOX
+	 PWM1_config(hspi, true, RA8875_PWM_CLK_DIV1024); // turn on the backlight using PWM
+	 PWM1_out(hspi, 255); // set blacklight to the highest
+	 fill_screen(hspi, RA8875_BLACK);
+	 text_mode(hspi); // Switch from graphics mode to text mode
+
+}
+
+void print_message(SPI_HandleTypeDef *hspi, char *msg, int height) {
+	if(msg != NULL) {
+		set_cursor(hspi, 15, 235 + height * next_line_height);
+		text_write(hspi, msg, strlen(msg)); // Write the string to the display
+	}
+}
+
+/**
+ * Display number of people in store, number of people in Queue and output Messages:
+ * using height 35 as next line
+ */
+void main_display_info(SPI_HandleTypeDef *hspi, int num_people_in_store, int num_people_in_queue, int max_capacity, char *msg1, char* msg2, char* msg3, char* msg4) {
+	char buffer[64];
+	char msg_header[] = "Messages:";
+
+	// Basic setup, clear screen, set color and set text size
+	clear_screen(hspi);
+	set_text_color(hspi, RA8875_WHITE);
+	enlarge_text(hspi, 2);
+
+	sprintf(buffer, "Number of people in store: %d", num_people_in_store);
+	set_cursor(hspi, 15, 20);
+	text_write(hspi, buffer, strlen(buffer)); // Write the string to the display
+
+	sprintf(buffer, "Number of people on queue: %d", num_people_in_queue);
+	set_cursor(hspi, 15, 55);
+	text_write(hspi, buffer, strlen(buffer)); // Write the string to the display
+
+	sprintf(buffer, "Max Capacity allowed: %d", max_capacity);
+	set_cursor(hspi, 15, 90);
+	text_write(hspi, buffer, strlen(buffer)); // Write the string to the display
+
+	set_cursor(hspi, 15, 200);
+	text_write(hspi, msg_header, strlen(msg_header)); // Write the string to the display
+
+	print_message(hspi, msg1, 0);
+	print_message(hspi, msg2, 1);
+	print_message(hspi, msg3, 2);
+	print_message(hspi, msg4, 3);
+}
+
+
+
+
+

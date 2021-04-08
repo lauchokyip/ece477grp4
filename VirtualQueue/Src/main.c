@@ -104,78 +104,13 @@ int main(void)
   MX_I2C1_Init();
   MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
-  ///////////////////////////////////
-  // Start of initialization
-  //
-  //////////////////////////////////
-  initialize_display(&hspi1); // initialize display
-  display_on(&hspi1, true); // turn on display
-  GPIOX_on(&hspi1, true);  // Enable TFT - display enable tied to GPIOX
-  PWM1_config(&hspi1, true, RA8875_PWM_CLK_DIV1024);
 
-  // Play with PWM (will see breathing from the backlight)
-  for(int i = 255 ; i != 0; i-=5){
-	  PWM1_out(&hspi1, i);
-	  HAL_Delay(50);
-  }
+  main_display_init(&hspi1);
+  main_display_info(&hspi1, 10, 2, 50, "Welcome to ABC store!", "Please scan your temperature now", NULL, "Oops! Initialization failed, please try again...");
 
-  for(int i = 0 ; i != 255; i+=5){
-  	  PWM1_out(&hspi1, i);
-  	  HAL_Delay(50);
-    }
-
-  PWM1_out(&hspi1, 255); // 255 is want we want!
-
-  ///////////////////////////////////
-  // Start of changing screen color example
-  //
-  //////////////////////////////////
-  fill_screen(&hspi1, RA8875_BLUE);
-  HAL_Delay(1000);
-  fill_screen(&hspi1, RA8875_RED);
-  HAL_Delay(1000);
-  fill_screen(&hspi1, RA8875_GREEN);
-  HAL_Delay(1000);
-  fill_screen(&hspi1, RA8875_CYAN);
-  HAL_Delay(1000);
-  fill_screen(&hspi1, RA8875_MAGENTA);
-  HAL_Delay(1000);
-  fill_screen(&hspi1, RA8875_YELLOW);
-  HAL_Delay(1000);
-  fill_screen(&hspi1, RA8875_WHITE);
-  HAL_Delay(1000);
-  fill_screen(&hspi1, RA8875_BLACK);
-  HAL_Delay(1000);
-
-  ///////////////////////////////////
-  // Start of text example
-  //
-  //////////////////////////////////
-
-  text_mode(&hspi1); // Switch from graphics mode to text mode
-  cursor_blink(&hspi1, 32); // Start cursor blinking
   /* USER CODE END 2 */
 
-  char string[] = "Hello, World! :)";
-  set_cursor(&hspi1, 100, 100); // Set cursor in 100, 100
-  set_text_color(&hspi1, RA8875_BLUE); // change text color
-  text_write(&hspi1, string, 16); // Write the string to the display
 
-  HAL_Delay(2000);
-  clear_screen(&hspi1); // delete everything
-  HAL_Delay(2000);
-
-  set_cursor(&hspi1, 100, 100); // Set cursor in 100, 100
-  set_text_color(&hspi1, RA8875_WHITE); // change text color
-  text_write(&hspi1, string, 16); // Write the string to the display
-
-  HAL_Delay(2000);
-  clear_screen(&hspi1); // delete everything
-  HAL_Delay(2000);
-
-  enlarge_text(&hspi1, 3);
-  set_cursor(&hspi1, 100, 100); // Set cursor in 100, 100
-  text_write(&hspi1, string, 16); // Write the string to the display
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
