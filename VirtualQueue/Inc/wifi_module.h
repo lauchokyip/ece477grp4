@@ -7,12 +7,13 @@
 #include <string.h>
 #include <stdlib.h>
 #include "qr_scanner.h"
+#include "json.h"
 
 #define SEND_CMD_LEN 13
 #define GET_LEN 78
 
 typedef struct WifiMessage {
-	int type; // type of message: 1=QR scan, 2=exit,tempError,unauthEntry, 3=entry, 4=getStatus
+	int type; // type of message: 1=QR scan, 2=entry,exit,tempError,unauthEntry, 4=getStatus
 	uint8_t* url; // url of message to send
 	int url_len; // length of url
 	struct WifiMessage *next; // next message in queue
@@ -35,5 +36,6 @@ void send_message();
 void handle_message_response();
 void send_entry();
 void send_exit();
+void get_status();
 
 #endif

@@ -163,22 +163,71 @@ void send_message() {
 	HAL_UART_Receive_DMA(esp_huart, esp_recv_buf, 2000);
 }
 
+barcode_server_msg* barcode_parse_json(char *json_msg);
+no_data_server_msg* no_data_parse_json(char *json_msg);
+status_server_msg* status_parse_json(char *json_msg);
+
 void handle_message_response() {
 	printf("Response: %s\r\n", esp_recv_buf);
 	WifiMessage *m = message_queue_head;
+	if (strstr(esp_recv_buf, "HTTP/1.1 200 OK") == NULL) {
+		printf("HTTP ERROR\r\n");
+		message_queue_head = message_queue_head->next;
+		free(m->url);
+		free(m);
+		message_pending_handling = 0;
+		ready_for_next_message = 1;
+		return;
+	}
+	// get JSON out of repsonse
+	char* start = index(esp_recv_buf, '{');
+	char* end = rindex(esp_recv_buf, '}');
+	int json_len = end-start + 1;
+	printf("JSON length: %d\r\n", json_len);
+	if (json_len <= 0) {
+		printf("ERROR: JSON NOT FOUND IN STRING\r\n");
+		message_queue_head = message_queue_head->next;
+		free(m->url);
+		free(m);
+		message_pending_handling = 0;
+		ready_for_next_message = 1;
+		return;
+	}
+	char json[json_len+1];
+	memcpy(json, start, json_len);
+	json[json_len] = 0;
+	printf("JSON string: %s\r\n", json);
 	if (m->type == 1) { // QR scan
 		printf("WAS QR SCAN\r\n");
 		// parse QR JSON
-		// determine action - nothing or begin temp
-	} else if (m->type == 2) { // things w/o data - exit, tempError, unauthEntry
-		printf("WAS NO DATA TYPE (EXIT, TEMP ERROR, UNAUTH ENTRY)\r\n");
-	} else if (m->type == 3) { // entry
-		// determine if allowed
-		printf("WAS ENTRY\r\n");
-	} else if (m->type == 4) { // status
-		// parse status JSON
-		// send to display
+		barcode_server_msg* parsed_message = barcode_parse_json(esp_recv_buf);
+		if (parsed_message == NULL) {
+			printf("FAILED TO PARSE JSON\r\n");
+		} else {
+			print_out_barcode_msg(parsed_message);
+			// determine action - nothing or begin temp
+			free(parsed_message);
+		}
+	} else if (m->type == 2) { // things w/o data - entry, exit, tempError, unauthEntry
+		printf("WAS NO DATA TYPE (ENTRY, EXIT, TEMP ERROR, UNAUTH ENTRY)\r\n");
+		no_data_server_msg* parsed_message = no_data_parse_json(esp_recv_buf);
+		if (parsed_message == NULL) {
+			printf("FAILED TO PARSE JSON\r\n");
+		} else {
+			print_out_no_data_msg(parsed_message);
+			free(parsed_message);
+		}
+	} else if (m->type == 3) { // status
 		printf("WAS STATUS\r\n");
+		// parse status JSON
+		status_server_msg* parsed_message = status_parse_json(esp_recv_buf);
+		if (parsed_message == NULL) {
+			printf("FAILED TO PARSE JSON\r\n");
+		} else {
+			print_out_status_msg(parsed_message);
+			// send to display
+			free(parsed_message);
+		}
 	}
 	message_queue_head = message_queue_head->next;
 	free(m->url);
@@ -190,12 +239,17 @@ void handle_message_response() {
 
 void send_entry() {
 	uint8_t url[] = "https://virtualqueue477.herokuapp.com/enteredStore?storeSecret=grp4";
-	new_message(3, url, sizeof(url)/sizeof(uint8_t)-1);
+	new_message(2, url, sizeof(url)/sizeof(uint8_t)-1);
 }
 
 void send_exit() {
 	uint8_t url[] = "https://virtualqueue477.herokuapp.com/leftStore?storeSecret=grp4";
 	new_message(2, url, sizeof(url)/sizeof(uint8_t)-1);
+}
+
+void get_status() {
+	uint8_t url[] = "https://virtualqueue477.herokuapp.com/getStatus?storeSecret=grp4";
+	new_message(3, url, sizeof(url)/sizeof(uint8_t)-1);
 }
 
 

@@ -119,17 +119,15 @@ int main(void)
   esp8266_init(&huart4, 0, 1);
   //HAL_UART_Receive_IT(qr_huart, qr_buf, QR_SIZE); // note - CALL THIS HERE so that esp8266_init() can use QR scanning for WiFi if needed
   qr_scan_pending = 0;
-  initialize_motion_sensor(&hi2c1);
+  //initialize_motion_sensor(&hi2c1);
   right = 0;
   left = 0;
   stopped = 0;
-  printf("MOTION INIT DONE\r\n");
-  send_entry();
-  send_entry();
-  send_exit();
+  //printf("MOTION INIT DONE\r\n");
+  //char code[9] = "7b037964";
   //printf("QR INIT DONE\r\n");
+  get_status();
   /* USER CODE END 2 */
-
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 
@@ -178,6 +176,30 @@ int main(void)
 			send_message();
 		}
 	}
+	/*if (state == 0 || state == 1) {
+		if (timeout == 0) {
+			send_qr_scan(code);
+			++timeout;
+		} else if (timeout == 10000) {
+			++state;
+			timeout = 0;
+		} else {
+			++timeout;
+		}
+	} else if (state == 2) {
+		if (timeout == 0) {
+			send_entry();
+			++timeout;
+		} else if (timeout == 10000) {
+			++state;
+			timeout = 0;
+		} else {
+			++timeout;
+		}
+	} else if (state == 3) {
+		get_status();
+		++state;
+	}/*
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
