@@ -51,6 +51,10 @@ I2C_HandleTypeDef hi2c1;
 
 LCD_HandleTypeDef hlcd;
 
+SPI_HandleTypeDef hspi1;
+
+TIM_HandleTypeDef htim16;
+
 UART_HandleTypeDef huart4;
 UART_HandleTypeDef huart2;
 DMA_HandleTypeDef hdma_uart4_rx;
@@ -69,6 +73,8 @@ static void MX_LCD_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_UART4_Init(void);
 static void MX_I2C1_Init(void);
+static void MX_SPI1_Init(void);
+static void MX_TIM16_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -112,22 +118,28 @@ int main(void)
   MX_USART2_UART_Init();
   MX_UART4_Init();
   MX_I2C1_Init();
+  MX_SPI1_Init();
+  MX_TIM16_Init();
   /* USER CODE BEGIN 2 */
   RetargetInit(&huart2);
   printf("\r\nStarting\r\n");
+  main_display_init(&hspi1);
   //qr_scanner_init(&huart1); // note - THIS SHOULD BE CALLED BEFORE esp8266_init() if using QR scanning for wifi
-  esp8266_init(&huart4, 0, 1);
+  esp8266_init(&huart4, &hspi1, 0, 1);
   //HAL_UART_Receive_IT(qr_huart, qr_buf, QR_SIZE); // note - CALL THIS HERE so that esp8266_init() can use QR scanning for WiFi if needed
   qr_scan_pending = 0;
   //initialize_motion_sensor(&hi2c1);
   right = 0;
   left = 0;
   stopped = 0;
+  get_status();
   //printf("MOTION INIT DONE\r\n");
   //char code[9] = "7b037964";
   //printf("QR INIT DONE\r\n");
-  get_status();
+  HAL_TIM_Base_Start_IT(&htim16);
+
   /* USER CODE END 2 */
+
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 
@@ -176,30 +188,6 @@ int main(void)
 			send_message();
 		}
 	}
-	/*if (state == 0 || state == 1) {
-		if (timeout == 0) {
-			send_qr_scan(code);
-			++timeout;
-		} else if (timeout == 10000) {
-			++state;
-			timeout = 0;
-		} else {
-			++timeout;
-		}
-	} else if (state == 2) {
-		if (timeout == 0) {
-			send_entry();
-			++timeout;
-		} else if (timeout == 10000) {
-			++state;
-			timeout = 0;
-		} else {
-			++timeout;
-		}
-	} else if (state == 3) {
-		get_status();
-		++state;
-	}/*
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -345,6 +333,78 @@ static void MX_LCD_Init(void)
 }
 
 /**
+  * @brief SPI1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_SPI1_Init(void)
+{
+
+  /* USER CODE BEGIN SPI1_Init 0 */
+
+  /* USER CODE END SPI1_Init 0 */
+
+  /* USER CODE BEGIN SPI1_Init 1 */
+
+  /* USER CODE END SPI1_Init 1 */
+  /* SPI1 parameter configuration*/
+  hspi1.Instance = SPI1;
+  hspi1.Init.Mode = SPI_MODE_MASTER;
+  hspi1.Init.Direction = SPI_DIRECTION_2LINES;
+  hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
+  hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
+  hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
+  hspi1.Init.NSS = SPI_NSS_SOFT;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_4;
+  hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
+  hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
+  hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+  hspi1.Init.CRCPolynomial = 7;
+  hspi1.Init.CRCLength = SPI_CRC_LENGTH_DATASIZE;
+  hspi1.Init.NSSPMode = SPI_NSS_PULSE_DISABLE;
+  if (HAL_SPI_Init(&hspi1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN SPI1_Init 2 */
+
+  /* USER CODE END SPI1_Init 2 */
+
+}
+
+/**
+  * @brief TIM16 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM16_Init(void)
+{
+
+  /* USER CODE BEGIN TIM16_Init 0 */
+
+  /* USER CODE END TIM16_Init 0 */
+
+  /* USER CODE BEGIN TIM16_Init 1 */
+
+  /* USER CODE END TIM16_Init 1 */
+  htim16.Instance = TIM16;
+  htim16.Init.Prescaler = 7999;
+  htim16.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim16.Init.Period = 4999;
+  htim16.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim16.Init.RepetitionCounter = 0;
+  htim16.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim16) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM16_Init 2 */
+
+  /* USER CODE END TIM16_Init 2 */
+
+}
+
+/**
   * @brief UART4 Initialization Function
   * @param None
   * @retval None
@@ -443,10 +503,14 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
+  __HAL_RCC_GPIOE_CLK_ENABLE();
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOE, RST_Pin|CS_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : PB2 */
   GPIO_InitStruct.Pin = GPIO_PIN_2;
@@ -454,6 +518,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : RST_Pin CS_Pin */
+  GPIO_InitStruct.Pin = RST_Pin|CS_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
 }
 
@@ -464,6 +535,14 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 	if (huart == qr_huart) {
 		printf("QR INT\r\n");
 		qr_scan_pending = 1;
+	}
+}
+
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+	if (htim == &htim16 ) {
+		printf("GETTING STATUS\r\n");
+		get_status();
 	}
 }
 

@@ -13,8 +13,9 @@ UART_HandleTypeDef *esp_huart;
 // pass huart for esp, connection=0 for heroku, 1 for ptsv2
 // TODO: set up to take in wifi name and password as params
 // TODO: add set up verification checks
-void esp8266_init(UART_HandleTypeDef* huart, int wifi, int fast) {
+void esp8266_init(UART_HandleTypeDef* huart, SPI_HandleTypeDef* display, int wifi, int fast) {
 	esp_huart = huart;
+	display_handle = display;
 	wait_for_send_ok = 0;
 	wait_for_message_response = 0;
 	good_for_send = 0;
@@ -225,7 +226,7 @@ void handle_message_response() {
 			printf("FAILED TO PARSE JSON\r\n");
 		} else {
 			print_out_status_msg(parsed_message);
-			// send to display
+			main_display_info(display_handle, parsed_message->numPeopleInStore, parsed_message->queueLength, parsed_message->maxCapacity, "     Welcome to ABC store!", NULL, NULL, NULL);
 			free(parsed_message);
 		}
 	}

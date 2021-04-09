@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include "qr_scanner.h"
 #include "json.h"
+#include "display.h"
 
 #define SEND_CMD_LEN 13
 #define GET_LEN 78
@@ -28,8 +29,9 @@ extern int message_pending_handling;
 extern UART_HandleTypeDef *esp_huart; // huart for ESP-01
 
 WifiMessage* message_queue_head;
+SPI_HandleTypeDef* display_handle;
 
-void esp8266_init(UART_HandleTypeDef*, int, int); // pass huart for esp, connection=0 for heroku, 1 for ptsv2
+void esp8266_init(UART_HandleTypeDef*, SPI_HandleTypeDef*, int, int); // pass huart for esp, connection=0 for heroku, 1 for ptsv2
 void new_message(int, uint8_t*, int);
 void get_ok_to_send();
 void send_message();
