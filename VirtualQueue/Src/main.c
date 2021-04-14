@@ -60,9 +60,6 @@ UART_HandleTypeDef huart2;
 DMA_HandleTypeDef hdma_uart4_rx;
 
 /* USER CODE BEGIN PV */
-int right;
-int left;
-int stopped;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -123,20 +120,29 @@ int main(void)
   /* USER CODE BEGIN 2 */
   RetargetInit(&huart2);
   printf("\r\nStarting\r\n");
-  main_display_init(&hspi1);
+  //main_display_init(&hspi1);
   //qr_scanner_init(&huart1); // note - THIS SHOULD BE CALLED BEFORE esp8266_init() if using QR scanning for wifi
   esp8266_init(&huart4, &hspi1, 0, 1);
   //HAL_UART_Receive_IT(qr_huart, qr_buf, QR_SIZE); // note - CALL THIS HERE so that esp8266_init() can use QR scanning for WiFi if needed
   qr_scan_pending = 0;
-  //initialize_motion_sensor(&hi2c1);
-  right = 0;
-  left = 0;
-  stopped = 0;
-  get_status();
-  //printf("MOTION INIT DONE\r\n");
+  initialize_motion_sensor(&hi2c1);
+  int pir_size = 50;
+  int pir_samples[pir_size];
+  int threshold = 6;
+  int left = 0;
+  int right = 0;
+  int nothing = pir_size;
+  bool send_enable = false;
+  int sample_i;
+  for (sample_i=0; sample_i<pir_size; ++sample_i) {
+	  pir_samples[sample_i] = 0;
+  }
+  sample_i = 0;
+  //get_status();
+  printf("MOTION INIT DONE\r\n");
   //char code[9] = "7b037964";
   //printf("QR INIT DONE\r\n");
-  HAL_TIM_Base_Start_IT(&htim16);
+  //HAL_TIM_Base_Start_IT(&htim16);
 
   /* USER CODE END 2 */
 
@@ -150,33 +156,53 @@ int main(void)
 		qr_scan_received();
 	}
 
-	/*if (loop_motion_sensor(&hi2c1) == true) {
+	if (loop_motion_sensor(&hi2c1) == true) {
 		uint8_t movement = motion_sensor_get_moment();
+
+		if (pir_samples[sample_i] == 1) {
+			--right;
+		} else if (pir_samples[sample_i] == -1) {
+			--left;
+		} else {
+			--nothing;
+		}
+
 		if (movement & MOVEMENT_FROM_2_TO_4)
 	    {
-	      if (right == 0) {
-	    	  printf("RIGHT\r\n");
-	    	  right = 1;
-	    	  left = 0;
-	    	  stopped = 0;
-	    	  send_entry();
-	      }
+		  // RIGHT
+	      pir_samples[sample_i] = 1;
+	      ++right;
 	    }
 	    else if(movement & MOVEMENT_FROM_4_TO_2)
 	    {
-	      if (left == 0) {
-	    	  printf("LEFT\r\n");
-	    	  left = 1;
-	    	  right = 0;
-	    	  stopped = 0;
-	    	  send_exit();
-	      }
+	      // LEFT
+	      pir_samples[sample_i] = -1;
+	      ++left;
 	    } else {
-	      stopped = 1;
-	      right = 0;
-	      left = 0;
+	      pir_samples[sample_i] = 0;
+	      ++nothing;
 	    }
-	}*/
+
+		sample_i++;
+		if (sample_i > pir_size) {
+			sample_i = 0;
+		}
+
+		if (left > threshold && send_enable) {
+			printf("SEND LEFT\r\n");
+			send_entry();
+			send_enable = false;
+		} else if (right > threshold && send_enable) {
+			printf("SEND RIGHT\r\n");
+			send_exit();
+			send_enable = false;
+		} else if (right < threshold && left < threshold){
+			if (!send_enable) {
+				printf("SEND ENABLE\r\n");
+				send_enable = true;
+			}
+		}
+	}
 
 	if (message_pending_handling == 1) {
 		handle_message_response();

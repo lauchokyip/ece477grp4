@@ -1,18 +1,42 @@
+// handles communication with the web server via the ESP-01 over UART
+
+/* PUT THE FOLLOWING IN THE INTERRUPT HANDLER (not callback the real one in stm32l4xx_it.c) to deal with IDLE
+  if(RESET != __HAL_UART_GET_FLAG(&huart4, UART_FLAG_IDLE)) { //Judging whether it is idle interruption
+  	__HAL_UART_CLEAR_IDLEFLAG(&huart4);
+  	HAL_UART_DMAStop(&huart4);
+  	//uint8_t data_length  = 2000 - __HAL_DMA_GET_COUNTER(&hdma_uart4_rx);
+  	if (wait_for_send_ok == 1) {
+  		wait_for_send_ok = 0;
+  		good_for_send = 1;
+  	} else if (wait_for_message_response == 1) {
+  		wait_for_message_response = 0;
+  		message_pending_handling = 1;
+  	}
+
+  }
+*/
+
 #include "wifi_module.h"
 
 uint8_t esp_recv_buf[2000]; // giant buffer for receiving messages
-int wait_for_send_ok;
-int wait_for_message_response;
-int good_for_send;
-int ready_for_next_message;
-int message_pending_handling;
-UART_HandleTypeDef *esp_huart;
+int wait_for_send_ok; // if waiting for the ok to send data from the ESP
+int wait_for_message_response; // if waiting for a response from the web server
+int good_for_send; // if ok to send data to ESP
+int ready_for_next_message; // if ready to start from beginning with new message
+int message_pending_handling; // if a response from the server needs handling
+UART_HandleTypeDef *esp_huart; // UART handle to ESP
 
-// set up the module and connect to internet
-// currently uses blocking/polling so is dumb but is during setup so not the end of the world
-// pass huart for esp, connection=0 for heroku, 1 for ptsv2
-// TODO: set up to take in wifi name and password as params
+/* 	set up the module and connects to internet
+	currently uses blocking/polling so is dumb but is during setup so not the end of the world
+	INPUT: 	huart = UART handle for ESP
+			display = SPI handle for display
+			wifi = 0 to skip wifi connection (useful for repeated testing as ESP remembers)
+				   1 to use QR codes to set up
+				   2 to use Nate's default testing hotspot
+			fast = 0 to do full set up
+				   1 to skip reset, mode set, and number of connections (useful for repeated testing as ESP remembers)
 // TODO: add set up verification checks
+*/
 void esp8266_init(UART_HandleTypeDef* huart, SPI_HandleTypeDef* display, int wifi, int fast) {
 	esp_huart = huart;
 	display_handle = display;
@@ -23,7 +47,7 @@ void esp8266_init(UART_HandleTypeDef* huart, SPI_HandleTypeDef* display, int wif
 	message_pending_handling = 0;
 	message_queue_head = NULL;
 
-	// reset
+	// reset and set basic params
 	if (fast != 1) {
 		printf("reset...\r\n");
 		uint8_t reset[] = "AT+RST\r\n";
@@ -52,13 +76,13 @@ void esp8266_init(UART_HandleTypeDef* huart, SPI_HandleTypeDef* display, int wif
 	// connect to given wifi
 	if (wifi != 0) {
 	  printf("connect to wifi...\r\n");
-	  if (wifi == 2) {
+	  if (wifi == 2) { // use nate's hotspot (testing only)
 		  uint8_t connect[] = "AT+CWJAP=\"TEST-HOTSPOT\",\"65c9O21=\"\r\n";
 		  HAL_UART_Transmit(esp_huart, connect, sizeof(connect)/sizeof(uint8_t), 100);
 		  HAL_UART_Receive(esp_huart, esp_recv_buf, 2000, 10000);
 		  printf("%s\r\n", esp_recv_buf);
 		  memset(esp_recv_buf, 0, 2000);
-	  } else {
+	  } else { // using qr
 		  uint8_t wifi_name[100];
 		  memset(wifi_name, 0, 100);
 		  printf("Please scan QR code for WiFi name:\r\n");
@@ -99,10 +123,14 @@ void esp8266_init(UART_HandleTypeDef* huart, SPI_HandleTypeDef* display, int wif
 	HAL_UART_Receive(esp_huart, esp_recv_buf, 2000, 5000);
 	printf("%s\r\n", esp_recv_buf);
 	memset(esp_recv_buf, 0, 2000);
+
 	__HAL_UART_ENABLE_IT(esp_huart, UART_IT_IDLE); // enable IDLE line detection as message length is variable
 	printf("ESP8266 INIT COMPLETE\r\n");
 }
 
+// adds new message to message queue
+// NOTE: pass url_len = actual size - 1
+// ^ this may be fixed later
 void new_message(int type, uint8_t* url, int url_len) {
 	printf("INSERTING NEW MESSAGE\r\n");
 	WifiMessage *m = malloc(sizeof(WifiMessage));
@@ -125,25 +153,27 @@ void new_message(int type, uint8_t* url, int url_len) {
 	printf("NEW MESSAGE INSERTED\r\n");
 }
 
+// gets ok from ESP to send over data (GET request)
 void get_ok_to_send() {
 	ready_for_next_message = 0;
 	wait_for_send_ok = 1;
 	WifiMessage *m = message_queue_head;
 	int digits = count_digits(m->url_len + GET_LEN);
-	//printf("DIGITS=%d\r\n", digits);
 
+	// create command
 	uint8_t send_cmd[digits + SEND_CMD_LEN];
 	char send_cmd_str[digits + SEND_CMD_LEN];
 	sprintf(send_cmd_str, "AT+CIPSEND=%d\r\n", m->url_len + GET_LEN);
 	str_to_uint(send_cmd_str, send_cmd, digits + SEND_CMD_LEN);
 
+	// send
 	printf("asking to send...\r\n");
-	BSP_LCD_GLASS_DisplayString("ASK ");
 	memset(esp_recv_buf, 0, 2000);
 	HAL_UART_Transmit(esp_huart, send_cmd, sizeof(send_cmd)/sizeof(uint8_t), 100);
 	HAL_UART_Receive_DMA(esp_huart, esp_recv_buf, 2000);
 }
 
+// have gotten ok to send, so now send the data
 void send_message() {
 	printf("OK TO SEND:\r\n");
 	printf("%s\r\n", esp_recv_buf);
@@ -151,26 +181,27 @@ void send_message() {
 	wait_for_message_response = 1;
 	WifiMessage *m = message_queue_head;
 
+	// create "string" to send
 	uint8_t data[m->url_len + GET_LEN];
 	char data_str[m->url_len + GET_LEN];
 	sprintf(data_str, "GET %s HTTP/1.1\r\nHost: virtualqueue477.herokuapp.com\r\nConnection: keep-alive\r\n\r\n", m->url);
 	str_to_uint(data_str, data, m->url_len + GET_LEN);
 
+	// send
 	printf("sending...\r\n");
 	printf("To send:\r\n%s\r\n", data_str);
-	BSP_LCD_GLASS_DisplayString("SEND");
 	memset(esp_recv_buf, 0, 2000);
 	HAL_UART_Transmit(esp_huart, data, sizeof(data)/sizeof(uint8_t), 100);
 	HAL_UART_Receive_DMA(esp_huart, esp_recv_buf, 2000);
 }
 
-barcode_server_msg* barcode_parse_json(char *json_msg);
-no_data_server_msg* no_data_parse_json(char *json_msg);
-status_server_msg* status_parse_json(char *json_msg);
-
+// have gotten a reponse from the web server
+// determine the type and handle appropriately
 void handle_message_response() {
 	printf("Response: %s\r\n", esp_recv_buf);
 	WifiMessage *m = message_queue_head;
+
+	// if not ok, abandon
 	if (strstr(esp_recv_buf, "HTTP/1.1 200 OK") == NULL) {
 		printf("HTTP ERROR\r\n");
 		message_queue_head = message_queue_head->next;
@@ -180,6 +211,7 @@ void handle_message_response() {
 		ready_for_next_message = 1;
 		return;
 	}
+
 	// get JSON out of repsonse
 	char* start = index(esp_recv_buf, '{');
 	char* end = rindex(esp_recv_buf, '}');
@@ -198,9 +230,10 @@ void handle_message_response() {
 	memcpy(json, start, json_len);
 	json[json_len] = 0;
 	printf("JSON string: %s\r\n", json);
+
+	// determine type
 	if (m->type == 1) { // QR scan
 		printf("WAS QR SCAN\r\n");
-		// parse QR JSON
 		barcode_server_msg* parsed_message = barcode_parse_json(esp_recv_buf);
 		if (parsed_message == NULL) {
 			printf("FAILED TO PARSE JSON\r\n");
@@ -218,9 +251,8 @@ void handle_message_response() {
 			print_out_no_data_msg(parsed_message);
 			free(parsed_message);
 		}
-	} else if (m->type == 3) { // status
+	} else if (m->type == 3) { // status for display
 		printf("WAS STATUS\r\n");
-		// parse status JSON
 		status_server_msg* parsed_message = status_parse_json(esp_recv_buf);
 		if (parsed_message == NULL) {
 			printf("FAILED TO PARSE JSON\r\n");
@@ -230,6 +262,8 @@ void handle_message_response() {
 			free(parsed_message);
 		}
 	}
+
+	// remove message from queue
 	message_queue_head = message_queue_head->next;
 	free(m->url);
 	free(m);
@@ -238,34 +272,21 @@ void handle_message_response() {
 	printf("DONE HANDLING RESPONSE\r\n");
 }
 
+// enqueues an entry message
 void send_entry() {
 	uint8_t url[] = "https://virtualqueue477.herokuapp.com/enteredStore?storeSecret=grp4";
 	new_message(2, url, sizeof(url)/sizeof(uint8_t)-1);
 }
 
+// enqueues an exit message
 void send_exit() {
 	uint8_t url[] = "https://virtualqueue477.herokuapp.com/leftStore?storeSecret=grp4";
 	new_message(2, url, sizeof(url)/sizeof(uint8_t)-1);
 }
 
+// enqueues a status message
 void get_status() {
 	uint8_t url[] = "https://virtualqueue477.herokuapp.com/getStatus?storeSecret=grp4";
 	new_message(3, url, sizeof(url)/sizeof(uint8_t)-1);
 }
 
-
-/* PUT THE FOLLOWING IN THE INTERRUPT HANDLER (not callback the real one) to deal with IDLE
-  if(RESET != __HAL_UART_GET_FLAG(&huart4, UART_FLAG_IDLE)) { //Judging whether it is idle interruption
-  	__HAL_UART_CLEAR_IDLEFLAG(&huart4);
-  	HAL_UART_DMAStop(&huart4);
-  	//uint8_t data_length  = 2000 - __HAL_DMA_GET_COUNTER(&hdma_uart4_rx);
-  	if (wait_for_send_ok == 1) {
-  		wait_for_send_ok = 0;
-  		good_for_send = 1;
-  	} else if (wait_for_message_response == 1) {
-  		wait_for_message_response = 0;
-  		message_pending_handling = 1;
-  	}
-
-  }
-*/

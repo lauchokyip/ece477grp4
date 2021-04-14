@@ -1,3 +1,5 @@
+// functions for common tasks or debugging
+
 #include "utility.h"
 
 // count the number of digits in a number
@@ -10,7 +12,7 @@ int count_digits(int n) {
 	return digits;
 }
 
-// prints out the specified length of an array
+// prints out the specified number of characters of an array regardless of \0
 void print_length(uint8_t* array, int length) {
 	int i;
 	for (i=0; i < length; ++i) {

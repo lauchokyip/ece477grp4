@@ -30,7 +30,7 @@ static uint32_t last_time = 0;
 static uint32_t detect_interval = 100; // 50 ms
 
 float threshold_presence = 10;
-float threshold_movement = 20;
+float threshold_movement = 25;
 
 static uint8_t movement = MOVEMENT_NONE;
 

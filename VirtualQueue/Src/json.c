@@ -1,3 +1,6 @@
+// parses json
+// to use properly, create a struct in json.h, then create a version of x_parse_json() for it
+
 #include "json.h"
 #include "jsmn.h"
 #include "stdio.h"
@@ -42,10 +45,7 @@ int return_true_or_false_from_str(char *str)
     return -1;
 }
 
-/**
- * fill_in_struct_from_json take in JSON string and fills all the information
- * from the JSON message to a struct
- */
+// convert barcode scan response
 barcode_server_msg* barcode_parse_json(char *json_msg)
 {
     int i;
@@ -116,6 +116,7 @@ barcode_server_msg* barcode_parse_json(char *json_msg)
     return new_msg;
 }
 
+// convert no data type response
 no_data_server_msg* no_data_parse_json(char *json_msg)
 {
     int i;
@@ -164,6 +165,7 @@ no_data_server_msg* no_data_parse_json(char *json_msg)
     return new_msg;
 }
 
+// convert queue status response
 status_server_msg* status_parse_json(char *json_msg)
 {
     int i;

@@ -14,7 +14,7 @@ extern uint8_t qr_buf[QR_SIZE]; // buffer to hold 1 qr code
 extern UART_HandleTypeDef *qr_huart; // huart for qr scanner
 extern int qr_scan_pending;
 
-void qr_scanner_init(UART_HandleTypeDef* huart);
+void qr_scanner_init(UART_HandleTypeDef* huart, int);
 void qr_scan_received(void);
 void send_qr_scan(char* qr_code);
 
