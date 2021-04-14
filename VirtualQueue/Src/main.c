@@ -184,7 +184,7 @@ int main(void)
 	    }
 
 		sample_i++;
-		if (sample_i > pir_size) {
+		if (sample_i >= pir_size) {
 			sample_i = 0;
 		}
 
