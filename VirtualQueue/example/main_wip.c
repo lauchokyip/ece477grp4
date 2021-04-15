@@ -156,7 +156,7 @@ int main(void)
   while (1)
   {
     // QR HANDLING
-    // if a qr scan has occured, handle
+    // if a qr scan has OCCURRED, handle
 	if (qr_scan_pending == 1) {
 		printf("BEGIN SEND SCAN\r\n");
 		qr_scan_received();

@@ -70,7 +70,7 @@ void esp8266_init(UART_HandleTypeDef* huart, SPI_HandleTypeDef* display, int wif
 		HAL_UART_Transmit(esp_huart, mode, sizeof(mode)/sizeof(uint8_t), 100);
 		HAL_UART_Receive(esp_huart, esp_recv_buf, 2000, 500);
 		if (strstr(esp_recv_buf, "OK") == NULL) {
-			main_display_info(display_handle, num_in_store, queue_length, store_capacity, "AN ERROR HAS OCCURED", "ERROR: WIFI MODE", NULL, NULL);
+			main_display_info(display_handle, num_in_store, queue_length, store_capacity, "AN ERROR HAS OCCURRED", "ERROR: WIFI MODE", NULL, NULL);
 			return;
 		}
 		printf("%s\r\n", esp_recv_buf);
@@ -82,7 +82,7 @@ void esp8266_init(UART_HandleTypeDef* huart, SPI_HandleTypeDef* display, int wif
 		HAL_UART_Transmit(esp_huart, numcons, sizeof(numcons)/sizeof(uint8_t), 100);
 		HAL_UART_Receive(esp_huart, esp_recv_buf, 2000, 500);
 		if (strstr(esp_recv_buf, "OK") == NULL) {
-			main_display_info(display_handle, num_in_store, queue_length, store_capacity, "AN ERROR HAS OCCURED", "ERROR: WIFI NUMCONS", NULL, NULL);
+			main_display_info(display_handle, num_in_store, queue_length, store_capacity, "AN ERROR HAS OCCURRED", "ERROR: WIFI NUMCONS", NULL, NULL);
 			return;
 		}
 		printf("%s\r\n", esp_recv_buf);
@@ -102,6 +102,7 @@ void esp8266_init(UART_HandleTypeDef* huart, SPI_HandleTypeDef* display, int wif
 		  uint8_t wifi_name[100];
 		  memset(wifi_name, 0, 100);
 		  printf("Please scan QR code for WiFi name:\r\n");
+		  main_display_info(display_handle, num_in_store, queue_length, store_capacity, "Scan WiFi name...", NULL, NULL, NULL);
 		  while (wifi_name[0] == 0) {
 			  HAL_UART_Receive(qr_huart, wifi_name, 100, 1000);
 		  }
@@ -111,11 +112,13 @@ void esp8266_init(UART_HandleTypeDef* huart, SPI_HandleTypeDef* display, int wif
 		  uint8_t wifi_pass[100];
 		  memset(wifi_pass, 0, 100);
 		  printf("Please scan QR code for WiFi password:\r\n");
+		  main_display_info(display_handle, num_in_store, queue_length, store_capacity, "Scan WiFi password...", NULL, NULL, NULL);
 		  while (wifi_pass[0] == 0) {
 			  HAL_UART_Receive(qr_huart, wifi_pass, 100, 1000);
 		  }
 		  printf("%s\r\n", wifi_pass);
 		  wifi_pass[strlen(wifi_pass)-1] = 0; // remove ending newline
+		  main_display_info(display_handle, num_in_store, queue_length, store_capacity, "Starting up...", "Please wait", NULL, NULL);
 
 		  int c_size = strlen(wifi_name) + strlen(wifi_pass) + 16;
 		  uint8_t connect[c_size];
@@ -129,7 +132,7 @@ void esp8266_init(UART_HandleTypeDef* huart, SPI_HandleTypeDef* display, int wif
 			  HAL_UART_Receive(esp_huart, esp_recv_buf, 2000, 5000);
 			  ++count;
 			  if (count > 10) {
-					main_display_info(display_handle, num_in_store, queue_length, store_capacity, "AN ERROR HAS OCCURED", "ERROR: WIFI CONNECT", NULL, NULL);
+					main_display_info(display_handle, num_in_store, queue_length, store_capacity, "AN ERROR HAS OCCURRED", "ERROR: WIFI CONNECT", NULL, NULL);
 				  	return;
 			  }
 		  }
@@ -144,7 +147,7 @@ void esp8266_init(UART_HandleTypeDef* huart, SPI_HandleTypeDef* display, int wif
 	HAL_UART_Transmit(esp_huart, start, sizeof(start)/sizeof(uint8_t), 100);
 	HAL_UART_Receive(esp_huart, esp_recv_buf, 2000, 5000);
 	if (strstr(esp_recv_buf, "OK") == NULL) {
-		main_display_info(display_handle, num_in_store, queue_length, store_capacity, "AN ERROR HAS OCCURED", "ERROR: WIFI TCP", NULL, NULL);
+		main_display_info(display_handle, num_in_store, queue_length, store_capacity, "AN ERROR HAS OCCURRED", "ERROR: WIFI TCP", NULL, NULL);
 		return;
 	}
 	printf("%s\r\n", esp_recv_buf);
@@ -232,7 +235,7 @@ void handle_message_response() {
 		printf("HTTP ERROR\r\n");
 		char error[19];
 		sprintf(error, "ERROR: HTTP FAIL %d", m->type);
-		main_display_info(display_handle, num_in_store, queue_length, store_capacity, "AN ERROR HAS OCCURED", error, NULL, NULL);
+		main_display_info(display_handle, num_in_store, queue_length, store_capacity, "AN ERROR HAS OCCURRED", error, NULL, NULL);
 		message_queue_head = message_queue_head->next;
 		free(m->url);
 		free(m);
@@ -250,7 +253,7 @@ void handle_message_response() {
 		printf("ERROR: JSON NOT FOUND IN STRING\r\n");
 		char error[18];
 		sprintf(error, "ERROR: JSON DNE %d", m->type);
-		main_display_info(display_handle, num_in_store, queue_length, store_capacity, "AN ERROR HAS OCCURED", error, NULL, NULL);
+		main_display_info(display_handle, num_in_store, queue_length, store_capacity, "AN ERROR HAS OCCURRED", error, NULL, NULL);
 		message_queue_head = message_queue_head->next;
 		free(m->url);
 		free(m);
@@ -271,7 +274,7 @@ void handle_message_response() {
 			printf("FAILED TO PARSE JSON\r\n");
 			char error[19];
 			sprintf(error, "ERROR: JSON FAIL %d", m->type);
-			main_display_info(display_handle, num_in_store, queue_length, store_capacity, "AN ERROR HAS OCCURED", error, NULL, NULL);
+			main_display_info(display_handle, num_in_store, queue_length, store_capacity, "AN ERROR HAS OCCURRED", error, NULL, NULL);
 		} else {
 			print_out_barcode_msg(parsed_message);
 			// determine action - nothing or begin temp
@@ -284,7 +287,7 @@ void handle_message_response() {
 			printf("FAILED TO PARSE JSON\r\n");
 			char error[19];
 			sprintf(error, "ERROR: JSON FAIL %d", m->type);
-			main_display_info(display_handle, num_in_store, queue_length, store_capacity, "AN ERROR HAS OCCURED", error, NULL, NULL);
+			main_display_info(display_handle, num_in_store, queue_length, store_capacity, "AN ERROR HAS OCCURRED", error, NULL, NULL);
 		} else {
 			print_out_no_data_msg(parsed_message);
 			free(parsed_message);
@@ -296,7 +299,7 @@ void handle_message_response() {
 			printf("FAILED TO PARSE JSON\r\n");
 			char error[19];
 			sprintf(error, "ERROR: JSON FAIL %d", m->type);
-			main_display_info(display_handle, num_in_store, queue_length, store_capacity, "AN ERROR HAS OCCURED", error, NULL, NULL);
+			main_display_info(display_handle, num_in_store, queue_length, store_capacity, "AN ERROR HAS OCCURRED", error, NULL, NULL);
 		} else {
 			print_out_status_msg(parsed_message);
 			queue_length = parsed_message->queueLength;
