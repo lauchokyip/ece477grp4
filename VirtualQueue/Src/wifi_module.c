@@ -24,6 +24,11 @@ int wait_for_message_response; // if waiting for a response from the web server
 int good_for_send; // if ok to send data to ESP
 int ready_for_next_message; // if ready to start from beginning with new message
 int message_pending_handling; // if a response from the server needs handling
+// below is information for the display, so it can be updated externally (ex: error messages) w/o having to get status
+int queue_length; // length of queue
+int store_capacity; // store capcity
+int num_in_store; // number of people in store
+
 UART_HandleTypeDef *esp_huart; // UART handle to ESP
 
 /* 	set up the module and connects to internet
@@ -46,6 +51,9 @@ void esp8266_init(UART_HandleTypeDef* huart, SPI_HandleTypeDef* display, int wif
 	ready_for_next_message = 1;
 	message_pending_handling = 0;
 	message_queue_head = NULL;
+	queue_length = 0;
+	store_capacity = 0;
+	num_in_store = 0;
 
 	// reset and set basic params
 	if (fast != 1) {
@@ -61,6 +69,10 @@ void esp8266_init(UART_HandleTypeDef* huart, SPI_HandleTypeDef* display, int wif
 		uint8_t mode[] = "AT+CWMODE=1\r\n";
 		HAL_UART_Transmit(esp_huart, mode, sizeof(mode)/sizeof(uint8_t), 100);
 		HAL_UART_Receive(esp_huart, esp_recv_buf, 2000, 500);
+		if (strstr(esp_recv_buf, "OK") == NULL) {
+			main_display_info(display_handle, num_in_store, queue_length, store_capacity, "AN ERROR HAS OCCURED", "ERROR: WIFI MODE", NULL, NULL);
+			return;
+		}
 		printf("%s\r\n", esp_recv_buf);
 		memset(esp_recv_buf, 0, 2000);
 
@@ -69,6 +81,10 @@ void esp8266_init(UART_HandleTypeDef* huart, SPI_HandleTypeDef* display, int wif
 		uint8_t numcons[] = "AT+CIPMUX=0\r\n";
 		HAL_UART_Transmit(esp_huart, numcons, sizeof(numcons)/sizeof(uint8_t), 100);
 		HAL_UART_Receive(esp_huart, esp_recv_buf, 2000, 500);
+		if (strstr(esp_recv_buf, "OK") == NULL) {
+			main_display_info(display_handle, num_in_store, queue_length, store_capacity, "AN ERROR HAS OCCURED", "ERROR: WIFI NUMCONS", NULL, NULL);
+			return;
+		}
 		printf("%s\r\n", esp_recv_buf);
 		memset(esp_recv_buf, 0, 2000);
 	}
@@ -108,8 +124,14 @@ void esp8266_init(UART_HandleTypeDef* huart, SPI_HandleTypeDef* display, int wif
 		  printf("Connection command: %s\r\n", connect_str);
 		  str_to_uint(connect_str, connect, 216);
 		  HAL_UART_Transmit(esp_huart, connect, sizeof(connect)/sizeof(uint8_t), 100);
+		  int count = 0;
 		  while (strstr(esp_recv_buf, "WIFI GOT IP") == NULL) {
 			  HAL_UART_Receive(esp_huart, esp_recv_buf, 2000, 5000);
+			  ++count;
+			  if (count > 10) {
+					main_display_info(display_handle, num_in_store, queue_length, store_capacity, "AN ERROR HAS OCCURED", "ERROR: WIFI CONNECT", NULL, NULL);
+				  	return;
+			  }
 		  }
 		  printf("%s\r\n", esp_recv_buf);
 		  memset(esp_recv_buf, 0, 2000);
@@ -121,6 +143,10 @@ void esp8266_init(UART_HandleTypeDef* huart, SPI_HandleTypeDef* display, int wif
 	uint8_t start[] = "AT+CIPSTART=\"TCP\",\"virtualqueue477.herokuapp.com\",80\r\n";
 	HAL_UART_Transmit(esp_huart, start, sizeof(start)/sizeof(uint8_t), 100);
 	HAL_UART_Receive(esp_huart, esp_recv_buf, 2000, 5000);
+	if (strstr(esp_recv_buf, "OK") == NULL) {
+		main_display_info(display_handle, num_in_store, queue_length, store_capacity, "AN ERROR HAS OCCURED", "ERROR: WIFI TCP", NULL, NULL);
+		return;
+	}
 	printf("%s\r\n", esp_recv_buf);
 	memset(esp_recv_buf, 0, 2000);
 
@@ -204,6 +230,9 @@ void handle_message_response() {
 	// if not ok, abandon
 	if (strstr(esp_recv_buf, "HTTP/1.1 200 OK") == NULL) {
 		printf("HTTP ERROR\r\n");
+		char error[19];
+		sprintf(error, "ERROR: HTTP FAIL %d", m->type);
+		main_display_info(display_handle, num_in_store, queue_length, store_capacity, "AN ERROR HAS OCCURED", error, NULL, NULL);
 		message_queue_head = message_queue_head->next;
 		free(m->url);
 		free(m);
@@ -219,6 +248,9 @@ void handle_message_response() {
 	printf("JSON length: %d\r\n", json_len);
 	if (json_len <= 0) {
 		printf("ERROR: JSON NOT FOUND IN STRING\r\n");
+		char error[18];
+		sprintf(error, "ERROR: JSON DNE %d", m->type);
+		main_display_info(display_handle, num_in_store, queue_length, store_capacity, "AN ERROR HAS OCCURED", error, NULL, NULL);
 		message_queue_head = message_queue_head->next;
 		free(m->url);
 		free(m);
@@ -237,6 +269,9 @@ void handle_message_response() {
 		barcode_server_msg* parsed_message = barcode_parse_json(esp_recv_buf);
 		if (parsed_message == NULL) {
 			printf("FAILED TO PARSE JSON\r\n");
+			char error[19];
+			sprintf(error, "ERROR: JSON FAIL %d", m->type);
+			main_display_info(display_handle, num_in_store, queue_length, store_capacity, "AN ERROR HAS OCCURED", error, NULL, NULL);
 		} else {
 			print_out_barcode_msg(parsed_message);
 			// determine action - nothing or begin temp
@@ -247,6 +282,9 @@ void handle_message_response() {
 		no_data_server_msg* parsed_message = no_data_parse_json(esp_recv_buf);
 		if (parsed_message == NULL) {
 			printf("FAILED TO PARSE JSON\r\n");
+			char error[19];
+			sprintf(error, "ERROR: JSON FAIL %d", m->type);
+			main_display_info(display_handle, num_in_store, queue_length, store_capacity, "AN ERROR HAS OCCURED", error, NULL, NULL);
 		} else {
 			print_out_no_data_msg(parsed_message);
 			free(parsed_message);
@@ -256,9 +294,15 @@ void handle_message_response() {
 		status_server_msg* parsed_message = status_parse_json(esp_recv_buf);
 		if (parsed_message == NULL) {
 			printf("FAILED TO PARSE JSON\r\n");
+			char error[19];
+			sprintf(error, "ERROR: JSON FAIL %d", m->type);
+			main_display_info(display_handle, num_in_store, queue_length, store_capacity, "AN ERROR HAS OCCURED", error, NULL, NULL);
 		} else {
 			print_out_status_msg(parsed_message);
-			main_display_info(display_handle, parsed_message->numPeopleInStore, parsed_message->queueLength, parsed_message->maxCapacity, "     Welcome to ABC store!", NULL, NULL, NULL);
+			queue_length = parsed_message->queueLength;
+			num_in_store = parsed_message->numPeopleInStore;
+			store_capacity = parsed_message->maxCapacity;
+			main_display_info(display_handle, num_in_store, queue_length, store_capacity, "     Welcome to ABC store!", NULL, NULL, NULL);
 			free(parsed_message);
 		}
 	}

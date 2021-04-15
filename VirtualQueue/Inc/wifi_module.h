@@ -27,6 +27,9 @@ extern int wait_for_message_response;
 extern int good_for_send;
 extern int ready_for_next_message;
 extern int message_pending_handling;
+extern int queue_length;
+extern int store_capacity;
+extern int num_in_store;
 extern UART_HandleTypeDef *esp_huart;
 
 WifiMessage* message_queue_head; // head of message queue

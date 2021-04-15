@@ -124,7 +124,8 @@ int main(void)
   printf("\r\nStarting\r\n");
 
   // INITS
-  main_display_init(&hspi1);
+  main_display_init(&hspi1); // THIS SHOULD INIT FIRST so other modules can use it for error printing
+	main_display_info(display_handle, num_in_store, queue_length, store_capacity, "Starting up...", "Please wait", NULL, NULL);
   qr_scanner_init(&huart1, 0); // note - THIS SHOULD BE CALLED BEFORE esp8266_init() if using QR scanning for WiFi setup
   esp8266_init(&huart4, &hspi1, 0, 0);
   qr_scan_pending = 0;
@@ -145,6 +146,9 @@ int main(void)
   memset(pir_samples, 0, pir_size);
 
   printf("INIT DONE\r\n");
+	main_display_info(display_handle, num_in_store, queue_length, store_capacity, "Setup complete!", NULL, NULL, NULL);
+  HAL_Delay(5000);
+	main_display_info(display_handle, num_in_store, queue_length, store_capacity, "Welcome to the ABC Store!", NULL, NULL, NULL);
   /* USER CODE END 2 */
 
   /* Infinite loop */
