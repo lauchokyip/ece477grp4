@@ -23,6 +23,7 @@
 #include "stm32l4xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "wifi_module.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -56,7 +57,10 @@
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
+extern TIM_HandleTypeDef htim16;
+extern DMA_HandleTypeDef hdma_uart4_rx;
 extern UART_HandleTypeDef huart4;
+extern UART_HandleTypeDef huart2;
 /* USER CODE BEGIN EV */
 
 /* USER CODE END EV */
@@ -198,6 +202,34 @@ void SysTick_Handler(void)
 /******************************************************************************/
 
 /**
+  * @brief This function handles TIM1 update interrupt and TIM16 global interrupt.
+  */
+void TIM1_UP_TIM16_IRQHandler(void)
+{
+  /* USER CODE BEGIN TIM1_UP_TIM16_IRQn 0 */
+
+  /* USER CODE END TIM1_UP_TIM16_IRQn 0 */
+  HAL_TIM_IRQHandler(&htim16);
+  /* USER CODE BEGIN TIM1_UP_TIM16_IRQn 1 */
+
+  /* USER CODE END TIM1_UP_TIM16_IRQn 1 */
+}
+
+/**
+  * @brief This function handles USART2 global interrupt.
+  */
+void USART2_IRQHandler(void)
+{
+  /* USER CODE BEGIN USART2_IRQn 0 */
+
+  /* USER CODE END USART2_IRQn 0 */
+  HAL_UART_IRQHandler(&huart2);
+  /* USER CODE BEGIN USART2_IRQn 1 */
+
+  /* USER CODE END USART2_IRQn 1 */
+}
+
+/**
   * @brief This function handles UART4 global interrupt.
   */
 void UART4_IRQHandler(void)
@@ -208,7 +240,48 @@ void UART4_IRQHandler(void)
   HAL_UART_IRQHandler(&huart4);
   /* USER CODE BEGIN UART4_IRQn 1 */
 
+  // If this is an IDLE interrupt
+  if(RESET != __HAL_UART_GET_FLAG(&huart4, UART_FLAG_IDLE)) {
+  	__HAL_UART_CLEAR_IDLEFLAG(&huart4);
+  	HAL_UART_DMAStop(&huart4);
+
+    // determine current state and state to transition to
+    // in message transmission process
+  	if (wait_for_send_ok == 1) {
+  		if (strstr(esp_recv_buf, ">") == NULL) { // have not gotten permission to send
+			  HAL_UART_Receive_DMA(esp_huart, esp_recv_buf, 2000);
+			  printf("Not good to send: %s\r\n", esp_recv_buf);
+			  return;
+      } else {
+        wait_for_send_ok = 0;
+        good_for_send = 1;
+      }
+  	} else if (wait_for_message_response == 1) {
+  		if (strstr(esp_recv_buf, "HTTP") == NULL) { // have not gotten actual server response
+        HAL_UART_Receive_DMA(esp_huart, esp_recv_buf, 2000);
+        printf("Not real response: %s\r\n", esp_recv_buf);
+        return;
+      } else {
+        wait_for_message_response = 0;
+        message_pending_handling = 1;
+      }
+  	}
+  }
   /* USER CODE END UART4_IRQn 1 */
+}
+
+/**
+  * @brief This function handles DMA2 channel5 global interrupt.
+  */
+void DMA2_Channel5_IRQHandler(void)
+{
+  /* USER CODE BEGIN DMA2_Channel5_IRQn 0 */
+
+  /* USER CODE END DMA2_Channel5_IRQn 0 */
+  HAL_DMA_IRQHandler(&hdma_uart4_rx);
+  /* USER CODE BEGIN DMA2_Channel5_IRQn 1 */
+
+  /* USER CODE END DMA2_Channel5_IRQn 1 */
 }
 
 /* USER CODE BEGIN 1 */

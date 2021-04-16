@@ -10,10 +10,6 @@ RM := rm -rf
 -include sources.mk
 -include Startup/subdir.mk
 -include Src/subdir.mk
-<<<<<<< HEAD
-=======
--include Drivers/STM32L4xx_HAL_Driver/Src/subdir.mk
->>>>>>> origin/nate
 -include Drivers/STM32L4xx_HAL_Driver/subdir.mk
 -include subdir.mk
 -include objects.mk
@@ -58,13 +54,8 @@ all: main-build
 main-build: VirtualQueue.elf secondary-outputs
 
 # Tool invocations
-<<<<<<< HEAD
-VirtualQueue.elf: $(OBJS) $(USER_OBJS) C:\Users\acroy\Documents\GitHub\ece477grp4\VirtualQueue\STM32L476VGTX_FLASH.ld
-	arm-none-eabi-gcc -o "VirtualQueue.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\acroy\Documents\GitHub\ece477grp4\VirtualQueue\STM32L476VGTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="VirtualQueue.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
-=======
 VirtualQueue.elf: $(OBJS) $(USER_OBJS) C:\Users\Nate\Desktop\senior\ design\ece477grp4\VirtualQueue\STM32L476VGTX_FLASH.ld
 	arm-none-eabi-gcc -o "VirtualQueue.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\Nate\Desktop\senior design\ece477grp4\VirtualQueue\STM32L476VGTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="VirtualQueue.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
->>>>>>> origin/nate
 	@echo 'Finished building target: $@'
 	@echo ' '
 

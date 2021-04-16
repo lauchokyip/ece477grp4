@@ -20,7 +20,7 @@ git subtree push -P WebServer external main --squash
 ```
 To switch to another branch, let's say **feature**, we should do,
 ```
-git rm -r WebServer
+git rm WebServer
 git commit -m "removing sub-repo"
 git subtree add -P WebServer external feature --squash
 ```
