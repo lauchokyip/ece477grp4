@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Virtual Queue</title>
+        <script src="./packages/QRCode/qrcode.js"></script>
+        <link rel="stylesheet" href="bootstrap/bootstrap.css" />
+    </head>
+    <body>
+        <p>Your position in the queue is:</p>
+        <p id="positionText"></p>
+        <br />
+        <div id="qrcode" style="margin-left: 20px"></div>
+        <br />
+        <p id="timerText"></p>
+        <br /><br />
+        <input type="button" value="Leave Queue" id="btnLeaveQueue" />
+    </body>
+    <script src="./registerServiceWorker.js"></script>
+    <script src="./worker.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script SRC="./qrCode.js"></script>
+    <script src="/helper/customerHelper.js"></script>
+    <script src="./clientQueue.js"></script>
+</html>
