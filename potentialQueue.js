@@ -1,7 +1,7 @@
 const crypto = require("crypto");
 const { ID_BITLEN } = require("./helper/customerHelper.js");
 
-const ID_TTL = 1800 * 1000;
+const ID_TTL = 30 * 60 * 1000;
 // const ID_BITLEN = 32;
 
 const potentialQueue = {};
@@ -52,7 +52,6 @@ function get(id) {
 }
 
 function exists(id) {
-    console.log(potentialQueue);
     if (potentialQueue[id]) {
         return true;
     }

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Virtual Queue</title>
+        <link rel="stylesheet" href="bootstrap/bootstrap.css" />
+    </head>
+    <body>
+        <h2>Store Console</h2>
+        <p style="display: inline">Max Capacity:</p>
+        <p id="maxCapacityText"></p>
+
+        <p style="display: inline">Number of people in the store:</p>
+        <p id="numPeopleText"></p>
+
+        <p style="display: inline">Length of queue:</p>
+        <p id="queueLenText"></p>
+
+        <br />
+
+        <p style="display: inline">Set Max Capacity:</p>
+        <input type="number" id="txtNewMaxCapacity" />
+        <input type="button" id="btnSetMaxCapacity" value="Set" />
+        <p id="setMaxCapacityErrorText" style="color: red"></p>
+        <br />
+        <br />
+        <p style="display: inline">Set Number of people in the store:</p>
+        <input type="number" id="txtNewNumPeople" />
+        <input type="button" id="btnSetNumPeople" value="Set" />
+        <p id="setNumPeopleErrorText" style="color: red"></p>
+    </body>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="./console.js"></script>
+</html>

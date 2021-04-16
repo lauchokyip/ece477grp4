@@ -1,5 +1,5 @@
-import {registerSW} from "./registerServiceWorker.js"
-const divQRCode = document.getElementById("qrcode");
+// import { registerSW } from "./registerServiceWorker.js";
+// const divQRCode = document.getElementById("qrcode");
 const btnNewQRCode = document.getElementById("btnNewQRCode");
 var destroyQRTimeout;
 var qrcode;
@@ -20,12 +20,15 @@ async function displayQRCode() {
         return;
     }
 
-    qrcode = makeQRCode(potenID, divQRCode);
+    qrcode = makeQRCode(potenID.id);
     destroyQRTimeout = setTimeout(function () {
         removeQRCode();
     }, remainingTTL(potenID));
 
     linkSocketToID(potenID.id);
+
+    // for debugging
+    document.getElementById("qrcodeText").innerHTML = potenID.id;
 }
 
 btnNewQRCode.addEventListener("click", async function () {
@@ -33,14 +36,6 @@ btnNewQRCode.addEventListener("click", async function () {
     await generateNewID();
     displayQRCode();
 });
-
-function removeQRCode() {
-    // console.log("ID expired removing QR code.");
-    for (let i = 0; i < divQRCode.children.length; i++) {
-        const element = divQRCode.children[i];
-        element.remove();
-    }
-}
 
 async function generateNewID() {
     localStorage.removeItem("potenID");
@@ -70,21 +65,6 @@ function remainingTTL(potenID) {
     return Date.now() - potenID.timestamp + potenID.ttl;
 }
 
-function makeQRCode(potenId, div) {
-    var QRContainer = document.createElement("div");
-    div.append(QRContainer);
-    var qrcode = new QRCode(QRContainer, {
-        text: potenId.id,
-        width: 128,
-        height: 128,
-        colorDark: "#000000",
-        colorLight: "#ffffff",
-        correctLevel: QRCode.CorrectLevel.H,
-    });
-    console.log(potenId)
-    return qrcode;
-}
-
 socket.on("connect", function () {
     console.log("Socket connection");
     const potenID = JSON.parse(localStorage.getItem("potenID"));
@@ -101,7 +81,11 @@ socket.on("moveToQueue", function (data) {
     window.location.href = "/queue";
 
     // subscribe over here after the customer
-    registerSW(data.customer["id"]).catch(error => console.error(error));
+});
+
+socket.on("checkedIn", function () {
+    console.log("recieved checked in");
+    window.location.href = "/endScreen";
 });
 
 function linkSocketToID(potenID) {

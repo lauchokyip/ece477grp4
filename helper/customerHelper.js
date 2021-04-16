@@ -1,5 +1,5 @@
 const ID_BITLEN = 32;
-const MAX_PEOPLE_IN_PARTY = 100;
+const MAX_PEOPLE_IN_PARTY = 5;
 const ALLOW_ERROR = false;
 
 // The Formaet of the customer object
@@ -25,6 +25,7 @@ const ALLOW_ERROR = false;
 //object that is exported
 const customerHelper = {
     ID_BITLEN,
+    MAX_PEOPLE_IN_PARTY,
 
     makePoten: function (name, email, numPeople) {
         if (typeof numPeople == "string") {
@@ -127,6 +128,15 @@ const customerHelper = {
         if (num <= 0) return false;
 
         return true;
+    },
+
+    makeEmptyCustomer: function () {
+        return {
+            name: null,
+            email: null,
+            id: null,
+            numPeople: 0,
+        };
     },
 };
 

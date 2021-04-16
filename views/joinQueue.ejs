@@ -10,12 +10,16 @@
     </head>
     <body>
         <h1>QR code:</h1>
-        <div id="qrcode"></div>
+        <div id="qrcode" style="margin-left: 20px"></div>
+        <br />
+        <!-- for debugging -->
+        <p id="qrcodeText"></p>
+
         <br /><br />
         <input type="button" value="Generate New QR-Code" id="btnNewQRCode" />
     </body>
     <script src="/socket.io/socket.io.js"></script>
-
+    <script SRC="./qrCode.js"></script>
     <script src="./potenID.js"></script>
     <script type="module" src="./joinQueue.js"></script>
 </html>

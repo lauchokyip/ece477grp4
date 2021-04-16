@@ -41,14 +41,24 @@ if (!("PushManager" in window)) {
 
 const txtName = document.getElementById("txtName");
 const txtEmail = document.getElementById("txtEmail");
-const txtNumPeople = document.getElementById("txtNumPeople");
+const slctNumPeople = document.getElementById("slctNumPeople");
 const btnJoinQueue = document.getElementById("btnJoinQueue");
 
 txtName.addEventListener("input", validateInput);
 txtEmail.addEventListener("input", validateInput);
-txtNumPeople.addEventListener("input", validateInput);
+slctNumPeople.addEventListener("input", validateInput);
 
 var btnClicked = false;
+
+init();
+function init() {
+    for (let i = 1; i <= customerHelper.MAX_PEOPLE_IN_PARTY; i++) {
+        var opt = document.createElement("option");
+        opt.value = i;
+        opt.innerHTML = i;
+        slctNumPeople.append(opt);
+    }
+}
 
 function validateInput() {
     if (btnClicked) {
@@ -60,7 +70,7 @@ function validateInput() {
     const potenCustomer = customerHelper.makePoten(
         txtName.value,
         txtEmail.value,
-        txtNumPeople.value
+        slctNumPeople.value
     );
 
     if (potenCustomer === null) {
@@ -85,7 +95,7 @@ btnJoinQueue.addEventListener("click", async function () {
     const potenCustomer = customerHelper.makePoten(
         txtName.value,
         txtEmail.value,
-        txtNumPeople.value
+        slctNumPeople.value
     );
 
     var potenID = await getPotenID(potenCustomer);
