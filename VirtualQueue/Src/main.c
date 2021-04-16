@@ -125,7 +125,7 @@ int main(void)
 
   // INITS
   main_display_init(&hspi1); // THIS SHOULD INIT FIRST so other modules can use it for error printing
-  main_display_info(display_handle, num_in_store, queue_length, store_capacity, "Starting up...", "Please wait", NULL, NULL);
+  main_display_info(&hspi1, num_in_store, queue_length, store_capacity, "Starting up...", "Please wait", NULL, NULL);
   qr_scanner_init(&huart2, 0); // note - THIS SHOULD BE CALLED BEFORE esp8266_init() if using QR scanning for WiFi setup
   bool esp_ok = esp8266_init(&huart4, &hspi1, 2, 1);
   if (esp_ok == false) {
@@ -149,7 +149,7 @@ int main(void)
   memset(pir_samples, 0, pir_size);
 
   printf("INIT DONE\r\n");
-  main_display_info(display_handle, num_in_store, queue_length, store_capacity, "Setup complete!", NULL, NULL, NULL);
+  main_display_info(&hspi1, num_in_store, queue_length, store_capacity, "Setup complete!", NULL, NULL, NULL);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -206,23 +206,23 @@ int main(void)
 			if (valid_entries > 0) {
 				send_entry();
 				--valid_entries;
-				main_display_info(display_handle, num_in_store, queue_length, store_capacity, "Welcome to the ABC Store!", "Please wait to enter...", NULL, NULL);
+				main_display_info(&hspi1, num_in_store, queue_length, store_capacity, "Welcome to the ABC Store!", "Please wait to enter...", NULL, NULL);
 			} else {
 				send_unauthorizedEntry();
-				main_display_info(display_handle, num_in_store, queue_length, store_capacity, "WARNING:", "UNAUTHORIZED ENTRY", NULL, NULL);
+				main_display_info(&hspi1, num_in_store, queue_length, store_capacity, "WARNING:", "UNAUTHORIZED ENTRY", NULL, NULL);
 			}
 			send_enable = false;
 		} else if (right > threshold && send_enable) {
 			printf("SEND RIGHT\r\n");
 			send_exit();
 			send_enable = false;
-			main_display_info(display_handle, num_in_store, queue_length, store_capacity, "Welcome to the ABC Store!", "Please wait to enter...", NULL, NULL);
+			main_display_info(&hspi1, num_in_store, queue_length, store_capacity, "Welcome to the ABC Store!", "Please wait to enter...", NULL, NULL);
 		} else if (right < threshold && left < threshold) {
             // if both motion types below threshold, enable sending
 			if (!send_enable) {
 				printf("SEND ENABLE\r\n");
 				send_enable = true;
-				main_display_info(display_handle, num_in_store, queue_length, store_capacity, "Welcome to the ABC Store!", NULL, NULL, NULL);
+				main_display_info(&hspi1, num_in_store, queue_length, store_capacity, "Welcome to the ABC Store!", NULL, NULL, NULL);
 			}
 		}
 	}
