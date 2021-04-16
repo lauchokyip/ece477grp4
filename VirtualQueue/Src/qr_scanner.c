@@ -35,6 +35,7 @@ void qr_scan_received(void) {
 	char qr_to_send[QR_SIZE];
 	memcpy(qr_to_send, qr_buf, QR_SIZE);
 	qr_scan_pending = 0;
+	main_display_info(display_handle, num_in_store, queue_length, store_capacity, "QR SCAN", qr_to_send, NULL, NULL);
 
 	// add qr scan to wifi queue and reset buffer
 	send_qr_scan(qr_to_send);

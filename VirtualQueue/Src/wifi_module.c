@@ -42,7 +42,7 @@ UART_HandleTypeDef *esp_huart; // UART handle to ESP
 			fast = 0 to do full set up
 				   1 to skip reset, mode set, and number of connections (useful for repeated testing as ESP remembers)
 */
-void esp8266_init(UART_HandleTypeDef* huart, SPI_HandleTypeDef* display, int wifi, int fast) {
+bool esp8266_init(UART_HandleTypeDef* huart, SPI_HandleTypeDef* display, int wifi, int fast) {
 	esp_huart = huart;
 	display_handle = display;
 	wait_for_send_ok = 0;
@@ -71,7 +71,7 @@ void esp8266_init(UART_HandleTypeDef* huart, SPI_HandleTypeDef* display, int wif
 		HAL_UART_Receive(esp_huart, esp_recv_buf, 2000, 500);
 		if (strstr(esp_recv_buf, "OK") == NULL) {
 			main_display_info(display_handle, num_in_store, queue_length, store_capacity, "AN ERROR HAS OCCURRED", "ERROR: WIFI MODE", NULL, NULL);
-			return;
+			return false;
 		}
 		printf("%s\r\n", esp_recv_buf);
 		memset(esp_recv_buf, 0, 2000);
@@ -83,7 +83,7 @@ void esp8266_init(UART_HandleTypeDef* huart, SPI_HandleTypeDef* display, int wif
 		HAL_UART_Receive(esp_huart, esp_recv_buf, 2000, 500);
 		if (strstr(esp_recv_buf, "OK") == NULL) {
 			main_display_info(display_handle, num_in_store, queue_length, store_capacity, "AN ERROR HAS OCCURRED", "ERROR: WIFI NUMCONS", NULL, NULL);
-			return;
+			return false;
 		}
 		printf("%s\r\n", esp_recv_buf);
 		memset(esp_recv_buf, 0, 2000);
@@ -96,6 +96,10 @@ void esp8266_init(UART_HandleTypeDef* huart, SPI_HandleTypeDef* display, int wif
 		  uint8_t connect[] = "AT+CWJAP=\"TEST-HOTSPOT\",\"65c9O21=\"\r\n";
 		  HAL_UART_Transmit(esp_huart, connect, sizeof(connect)/sizeof(uint8_t), 100);
 		  HAL_UART_Receive(esp_huart, esp_recv_buf, 2000, 10000);
+		  if (strstr(esp_recv_buf, "WIFI GOT IP") == NULL) {
+		  	main_display_info(display_handle, num_in_store, queue_length, store_capacity, "AN ERROR HAS OCCURRED", "ERROR: WIFI CONNECT", NULL, NULL);
+		  	return false;
+		  }
 		  printf("%s\r\n", esp_recv_buf);
 		  memset(esp_recv_buf, 0, 2000);
 	  } else { // using qr
@@ -127,13 +131,14 @@ void esp8266_init(UART_HandleTypeDef* huart, SPI_HandleTypeDef* display, int wif
 		  printf("Connection command: %s\r\n", connect_str);
 		  str_to_uint(connect_str, connect, 216);
 		  HAL_UART_Transmit(esp_huart, connect, sizeof(connect)/sizeof(uint8_t), 100);
+		  HAL_UART_Receive(esp_huart, esp_recv_buf, 2000, 5000);
 		  int count = 0;
 		  while (strstr(esp_recv_buf, "WIFI GOT IP") == NULL) {
 			  HAL_UART_Receive(esp_huart, esp_recv_buf, 2000, 5000);
 			  ++count;
 			  if (count > 10) {
 					main_display_info(display_handle, num_in_store, queue_length, store_capacity, "AN ERROR HAS OCCURRED", "ERROR: WIFI CONNECT", NULL, NULL);
-				  	return;
+				  	return false;
 			  }
 		  }
 		  printf("%s\r\n", esp_recv_buf);
@@ -148,13 +153,14 @@ void esp8266_init(UART_HandleTypeDef* huart, SPI_HandleTypeDef* display, int wif
 	HAL_UART_Receive(esp_huart, esp_recv_buf, 2000, 5000);
 	if (strstr(esp_recv_buf, "OK") == NULL) {
 		main_display_info(display_handle, num_in_store, queue_length, store_capacity, "AN ERROR HAS OCCURRED", "ERROR: WIFI TCP", NULL, NULL);
-		return;
+		return false;
 	}
 	printf("%s\r\n", esp_recv_buf);
 	memset(esp_recv_buf, 0, 2000);
 
 	__HAL_UART_ENABLE_IT(esp_huart, UART_IT_IDLE); // enable IDLE line detection as message length is variable
 	printf("ESP8266 INIT COMPLETE\r\n");
+	return true;
 }
 
 // adds new message to message queue
@@ -278,10 +284,11 @@ void handle_message_response() {
 		} else {
 			print_out_barcode_msg(parsed_message);
 			if (parsed_message->isCheckingIn == true) { // take temps
-				printf("CHECKING IN\r\n");
-				main_display_info(display_handle, num_in_store, queue_length, store_capacity, "Welcome:", parsed_message->customer.name, "Place your forehead near the sensor", "at the top of the kiosk");
 				int i;
 				for (i = 0; i < parsed_message->customer.numPeople; ++i) {
+					printf("CHECKING IN\r\n");
+					main_display_info(display_handle, num_in_store, queue_length, store_capacity, "Welcome:", parsed_message->customer.name, "Place your forehead near the sensor", "at the top of the kiosk");
+					HAL_Delay(5000);
 					int temp = fake_temp();
 					char temp_str[4];
 					sprintf(temp_str, "%d", temp);

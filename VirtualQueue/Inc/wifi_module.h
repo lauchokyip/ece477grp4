@@ -36,7 +36,7 @@ extern UART_HandleTypeDef *esp_huart;
 WifiMessage* message_queue_head; // head of message queue
 SPI_HandleTypeDef* display_handle;
 
-void esp8266_init(UART_HandleTypeDef*, SPI_HandleTypeDef*, int, int);
+bool esp8266_init(UART_HandleTypeDef*, SPI_HandleTypeDef*, int, int);
 void new_message(int, uint8_t*, int);
 void get_ok_to_send();
 void send_message();
