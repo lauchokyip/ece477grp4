@@ -15,6 +15,8 @@
   *                        opensource.org/licenses/BSD-3-Clause
   *
   ******************************************************************************
+  This is the "clean" version being built towards the final product. The regular
+  main.c is more of a testing/unclean version.
   */
 /* USER CODE END Header */
 
@@ -118,47 +120,53 @@ int main(void)
   MX_SPI1_Init();
   MX_TIM16_Init();
   /* USER CODE BEGIN 2 */
-  RetargetInit(&huart2);
+  //RetargetInit(&huart2);
   printf("\r\nStarting\r\n");
-  //main_display_init(&hspi1);
-  //qr_scanner_init(&huart1); // note - THIS SHOULD BE CALLED BEFORE esp8266_init() if using QR scanning for wifi
-  esp8266_init(&huart4, &hspi1, 0, 1);
-  //HAL_UART_Receive_IT(qr_huart, qr_buf, QR_SIZE); // note - CALL THIS HERE so that esp8266_init() can use QR scanning for WiFi if needed
-  qr_scan_pending = 0;
-  initialize_motion_sensor(&hi2c1);
-  int pir_size = 50;
-  int pir_samples[pir_size];
-  int threshold = 6;
-  int left = 0;
-  int right = 0;
-  int nothing = pir_size;
-  bool send_enable = false;
-  int sample_i;
-  for (sample_i=0; sample_i<pir_size; ++sample_i) {
-	  pir_samples[sample_i] = 0;
-  }
-  sample_i = 0;
-  //get_status();
-  printf("MOTION INIT DONE\r\n");
-  //char code[9] = "7b037964";
-  //printf("QR INIT DONE\r\n");
-  //HAL_TIM_Base_Start_IT(&htim16);
 
+  // INITS
+  main_display_init(&hspi1); // THIS SHOULD INIT FIRST so other modules can use it for error printing
+  main_display_info(display_handle, num_in_store, queue_length, store_capacity, "Starting up...", "Please wait", NULL, NULL);
+  qr_scanner_init(&huart2, 0); // note - THIS SHOULD BE CALLED BEFORE esp8266_init() if using QR scanning for WiFi setup
+  esp8266_init(&huart4, &hspi1, 0, 0);
+  qr_scan_pending = 0;
+  HAL_UART_Receive_IT(qr_huart, qr_buf, QR_SIZE); // note - CALL THIS HERE to restart QR scanning after WiFi setup via QR
+  get_status(); // get initial queue status for monitor
+  HAL_TIM_Base_Start_IT(&htim16);
+  initialize_motion_sensor(&hi2c1);
+
+  // MOTION SENSOR BUFFER VARIABLES
+  int pir_size = 50; // size of buffer
+  int pir_samples[pir_size]; // buffer
+  int threshold = 6; // number of readings in buffer to trigger motion
+  int left = 0; // number of lefts
+  int right = 0; // number of rights
+  int nothing = pir_size; // number of no motions
+  bool send_enable = false; // flag to prevent constantly sending when threshold met
+  int sample_i = 0; // sample index
+  memset(pir_samples, 0, pir_size);
+
+  printf("INIT DONE\r\n");
+  main_display_info(display_handle, num_in_store, queue_length, store_capacity, "Setup complete!", NULL, NULL, NULL);
+  HAL_Delay(5000);
+  main_display_info(display_handle, num_in_store, queue_length, store_capacity, "Welcome to the ABC Store!", NULL, NULL, NULL);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-
   while (1)
   {
+    // QR HANDLING
+    // if a qr scan has OCCURRED, handle
 	if (qr_scan_pending == 1) {
 		printf("BEGIN SEND SCAN\r\n");
 		qr_scan_received();
 	}
 
+    // MOTION SENSOR HANDLING
 	if (loop_motion_sensor(&hi2c1) == true) {
 		uint8_t movement = motion_sensor_get_moment();
 
+        // decrement count of motion type that is being overwritten
 		if (pir_samples[sample_i] == 1) {
 			--right;
 		} else if (pir_samples[sample_i] == -1) {
@@ -167,6 +175,7 @@ int main(void)
 			--nothing;
 		}
 
+        // increase appropriate motion type count
 		if (movement & MOVEMENT_FROM_2_TO_4)
 	    {
 		  // RIGHT
@@ -183,30 +192,46 @@ int main(void)
 	      ++nothing;
 	    }
 
+        // increment buffer index
 		sample_i++;
 		if (sample_i >= pir_size) {
 			sample_i = 0;
 		}
 
+        // if motion type has exceeded threshold and able to send,
+        // send that type and disable sending
 		if (left > threshold && send_enable) {
 			printf("SEND LEFT\r\n");
-			send_entry();
+			if (valid_entries > 0) {
+				send_entry();
+				--valid_entries;
+				main_display_info(display_handle, num_in_store, queue_length, store_capacity, "Welcome to the ABC Store!", "Please wait to enter...", NULL, NULL);
+			} else {
+				send_unauthorizedEntry();
+				main_display_info(display_handle, num_in_store, queue_length, store_capacity, "WARNING:", "UNAUTHORIZED ENTRY", NULL, NULL);
+			}
 			send_enable = false;
 		} else if (right > threshold && send_enable) {
 			printf("SEND RIGHT\r\n");
 			send_exit();
 			send_enable = false;
-		} else if (right < threshold && left < threshold){
+			main_display_info(display_handle, num_in_store, queue_length, store_capacity, "Welcome to the ABC Store!", "Please wait to enter...", NULL, NULL);
+		} else if (right < threshold && left < threshold) {
+            // if both motion types below threshold, enable sending
 			if (!send_enable) {
 				printf("SEND ENABLE\r\n");
 				send_enable = true;
+				main_display_info(display_handle, num_in_store, queue_length, store_capacity, "Welcome to the ABC Store!", NULL, NULL, NULL);
 			}
 		}
 	}
 
+    // WIFI HANDLING
+    // if have a response to handle
 	if (message_pending_handling == 1) {
 		handle_message_response();
 	}
+    // if messages pending, get ok and then send
 	if (message_queue_head != NULL) {
 		if (ready_for_next_message == 1) {
 			get_ok_to_send();
@@ -481,7 +506,7 @@ static void MX_USART2_UART_Init(void)
 
   /* USER CODE END USART2_Init 1 */
   huart2.Instance = USART2;
-  huart2.Init.BaudRate = 115200;
+  huart2.Init.BaudRate = 9600;
   huart2.Init.WordLength = UART_WORDLENGTH_8B;
   huart2.Init.StopBits = UART_STOPBITS_1;
   huart2.Init.Parity = UART_PARITY_NONE;
@@ -555,6 +580,9 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+// Only used for QR callback.
+// If triggered, a QR code has been scanned, set flag.
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
 	printf("RX CPLT CALLBACK\r\n");
@@ -564,8 +592,10 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 	}
 }
 
+// Called when timer is up.
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
+    // if is display status timer, get status
 	if (htim == &htim16 ) {
 		printf("GETTING STATUS\r\n");
 		get_status();

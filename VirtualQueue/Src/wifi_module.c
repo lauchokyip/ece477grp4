@@ -28,6 +28,7 @@ int message_pending_handling; // if a response from the server needs handling
 int queue_length; // length of queue
 int store_capacity; // store capcity
 int num_in_store; // number of people in store
+int valid_entries; // the number of people currently allowed to enter the store
 
 UART_HandleTypeDef *esp_huart; // UART handle to ESP
 
@@ -40,7 +41,6 @@ UART_HandleTypeDef *esp_huart; // UART handle to ESP
 				   2 to use Nate's default testing hotspot
 			fast = 0 to do full set up
 				   1 to skip reset, mode set, and number of connections (useful for repeated testing as ESP remembers)
-// TODO: add set up verification checks
 */
 void esp8266_init(UART_HandleTypeDef* huart, SPI_HandleTypeDef* display, int wifi, int fast) {
 	esp_huart = huart;
@@ -277,7 +277,35 @@ void handle_message_response() {
 			main_display_info(display_handle, num_in_store, queue_length, store_capacity, "AN ERROR HAS OCCURRED", error, NULL, NULL);
 		} else {
 			print_out_barcode_msg(parsed_message);
-			// determine action - nothing or begin temp
+			if (parsed_message->isCheckingIn == true) { // take temps
+				printf("CHECKING IN\r\n");
+				main_display_info(display_handle, num_in_store, queue_length, store_capacity, "Welcome:", parsed_message->customer.name, "Place your forehead near the sensor", "at the top of the kiosk");
+				int i;
+				for (i = 0; i < parsed_message->customer.numPeople; ++i) {
+					int temp = fake_temp();
+					char temp_str[4];
+					sprintf(temp_str, "%d", temp);
+					if (temp > TEMP_MAX) { // fever
+						printf("TEMPERATURE TOO HIGH\r\n");
+						main_display_info(display_handle, num_in_store, queue_length, store_capacity, temp_str, "TEMPERATURE IS TOO HIGH", "SEEK STAFF ASSISTANCE", NULL);
+						send_tempError();
+					} else if (temp < TEMP_MIN) { // likely not a real temp, too low
+						printf("TEMPERATURE TOO LOW TRY AGAIN\r\n");
+						main_display_info(display_handle, num_in_store, queue_length, store_capacity, temp_str, "Temperature too low", "Please get closer", "or ask for assistance");
+						--i;
+					} else { // in bounds
+						printf("TEMPERATURE OK PLEASE ENTER\r\n");
+						main_display_info(display_handle, num_in_store, queue_length, store_capacity, temp_str, "Temperature check ok!", "Enter when ready", NULL);
+						++valid_entries;
+					}
+				}
+			} else if (parsed_message->customer.numPeople == 0) { // can only occur on first scan
+				printf("FIRST SCAN, WELCOME TO QUEUE\r\n");
+				main_display_info(display_handle, num_in_store, queue_length, store_capacity, "Welcome to the ABC Store!", "You are now in the Virtual Queue!", NULL, NULL);
+			} else {
+				printf("NOT YOUR TURN\r\n");
+				main_display_info(display_handle, num_in_store, queue_length, store_capacity, "Sorry,", parsed_message->customer.name, "It is not your turn to enter.", "Check your device for your place in the queue.");
+			}
 			free(parsed_message);
 		}
 	} else if (m->type == 2) { // things w/o data - entry, exit, tempError, unauthEntry
@@ -305,7 +333,7 @@ void handle_message_response() {
 			queue_length = parsed_message->queueLength;
 			num_in_store = parsed_message->numPeopleInStore;
 			store_capacity = parsed_message->maxCapacity;
-			main_display_info(display_handle, num_in_store, queue_length, store_capacity, "     Welcome to ABC store!", NULL, NULL, NULL);
+			main_display_info(display_handle, num_in_store, queue_length, store_capacity, "Welcome to ABC store!", NULL, NULL, NULL);
 			free(parsed_message);
 		}
 	}
@@ -335,5 +363,15 @@ void send_exit() {
 void get_status() {
 	uint8_t url[] = "https://virtualqueue477.herokuapp.com/getStatus?storeSecret=grp4";
 	new_message(3, url, sizeof(url)/sizeof(uint8_t)-1);
+}
+
+void send_tempError() {
+	uint8_t url[] = "https://virtualqueue477.herokuapp.com/tempError?storeSecret=grp4";
+	new_message(2, url, sizeof(url)/sizeof(uint8_t)-1);
+}
+
+void send_unauthorizedEntry() {
+	uint8_t url[] = "https://virtualqueue477.herokuapp.com/unauthorizedEntry?storeSecret=grp4";
+	new_message(2, url, sizeof(url)/sizeof(uint8_t)-1);
 }
 

@@ -28,3 +28,8 @@ void str_to_uint(char* str, uint8_t* arr, int length) {
 		arr[i] = (uint8_t)str[i];
 	}
 }
+
+// fake test function for getting user temperature
+int fake_temp() {
+	return 98;
+}
