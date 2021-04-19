@@ -51,9 +51,6 @@ bool esp8266_init(UART_HandleTypeDef* huart, SPI_HandleTypeDef* display, int wif
 	ready_for_next_message = 1;
 	message_pending_handling = 0;
 	message_queue_head = NULL;
-	queue_length = 0;
-	store_capacity = 0;
-	num_in_store = 0;
 
 	// reset and set basic params
 	if (fast != 1) {
@@ -295,7 +292,7 @@ void handle_message_response() {
 					if (temp > TEMP_MAX) { // fever
 						printf("TEMPERATURE TOO HIGH\r\n");
 						main_display_info(display_handle, num_in_store, queue_length, store_capacity, temp_str, "TEMPERATURE IS TOO HIGH", "SEEK STAFF ASSISTANCE", NULL);
-						send_tempError();
+						send_tempError(temp);
 					} else if (temp < TEMP_MIN) { // likely not a real temp, too low
 						printf("TEMPERATURE TOO LOW TRY AGAIN\r\n");
 						main_display_info(display_handle, num_in_store, queue_length, store_capacity, temp_str, "Temperature too low", "Please get closer", "or ask for assistance");
@@ -340,7 +337,7 @@ void handle_message_response() {
 			queue_length = parsed_message->queueLength;
 			num_in_store = parsed_message->numPeopleInStore;
 			store_capacity = parsed_message->maxCapacity;
-			main_display_info(display_handle, num_in_store, queue_length, store_capacity, "Welcome to ABC store!", NULL, NULL, NULL);
+			main_display_info(display_handle, num_in_store, queue_length, store_capacity, "     Welcome to ABC store!", NULL, NULL, NULL);
 			free(parsed_message);
 		}
 	}
@@ -372,9 +369,11 @@ void get_status() {
 	new_message(3, url, sizeof(url)/sizeof(uint8_t)-1);
 }
 
-void send_tempError() {
-	uint8_t url[] = "https://virtualqueue477.herokuapp.com/tempError?storeSecret=grp4";
-	new_message(2, url, sizeof(url)/sizeof(uint8_t)-1);
+void send_tempError(int temp) {
+	int digits = count_digits(temp);
+	uint8_t url[TEMP_LEN + digits];
+	sprintf(url, "https://virtualqueue477.herokuapp.com/tempError?storeSecret=grp4&temp=%d", temp);
+	new_message(2, url, TEMP_LEN + digits);
 }
 
 void send_unauthorizedEntry() {

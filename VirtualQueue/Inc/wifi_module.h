@@ -12,6 +12,7 @@
 
 #define SEND_CMD_LEN 13
 #define GET_LEN 78
+#define TEMP_LEN 71
 
 // Used to construct a queue of pending messages to send over WiFi
 typedef struct WifiMessage {

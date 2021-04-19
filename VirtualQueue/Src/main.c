@@ -124,6 +124,9 @@ int main(void)
   printf("\r\nStarting\r\n");
 
   // INITS
+  queue_length = 0; // init these first so the display works
+  store_capacity = 0;
+  num_in_store = 0;
   main_display_init(&hspi1); // THIS SHOULD INIT FIRST so other modules can use it for error printing
   main_display_info(display_handle, num_in_store, queue_length, store_capacity, "Starting up...", "Please wait", NULL, NULL);
   qr_scanner_init(&huart2, 0); // note - THIS SHOULD BE CALLED BEFORE esp8266_init() if using QR scanning for WiFi setup
@@ -133,8 +136,7 @@ int main(void)
   }
   qr_scan_pending = 0;
   HAL_UART_Receive_IT(qr_huart, qr_buf, QR_SIZE); // note - CALL THIS HERE to restart QR scanning after WiFi setup via QR
-  get_status(); // get initial queue status for monitor
-  HAL_TIM_Base_Start_IT(&htim16);
+
   initialize_motion_sensor(&hi2c1);
 
   // MOTION SENSOR BUFFER VARIABLES
@@ -150,6 +152,8 @@ int main(void)
 
   printf("INIT DONE\r\n");
   main_display_info(display_handle, num_in_store, queue_length, store_capacity, "Setup complete!", NULL, NULL, NULL);
+  get_status(); // get initial queue status for monitor
+  HAL_TIM_Base_Start_IT(&htim16);
   /* USER CODE END 2 */
 
   /* Infinite loop */
