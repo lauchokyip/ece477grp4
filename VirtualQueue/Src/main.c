@@ -32,6 +32,7 @@
 #include "qr_scanner.h"
 #include "motion.h"
 #include "mytype.h"
+#include "thermopile.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -49,6 +50,9 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+ADC_HandleTypeDef hadc1;
+ADC_HandleTypeDef hadc2;
+
 I2C_HandleTypeDef hi2c1;
 
 LCD_HandleTypeDef hlcd;
@@ -74,6 +78,8 @@ static void MX_UART4_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_TIM16_Init(void);
+static void MX_ADC1_Init(void);
+static void MX_ADC2_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -119,6 +125,8 @@ int main(void)
   MX_I2C1_Init();
   MX_SPI1_Init();
   MX_TIM16_Init();
+  MX_ADC1_Init();
+  MX_ADC2_Init();
   /* USER CODE BEGIN 2 */
   //RetargetInit(&huart2);
   printf("\r\nStarting\r\n");
@@ -128,7 +136,7 @@ int main(void)
   store_capacity = 0;
   num_in_store = 0;
   main_display_init(&hspi1); // THIS SHOULD INIT FIRST so other modules can use it for error printing
-  main_display_info(display_handle, num_in_store, queue_length, store_capacity, "Starting up...", "Please wait", NULL, NULL);
+  main_display_info(&hspi1, num_in_store, queue_length, store_capacity, "Starting up...", "Please wait", NULL, NULL);
   qr_scanner_init(&huart2, 0); // note - THIS SHOULD BE CALLED BEFORE esp8266_init() if using QR scanning for WiFi setup
   bool esp_ok = esp8266_init(&huart4, &hspi1, 2, 1);
   if (esp_ok == false) {
@@ -137,6 +145,7 @@ int main(void)
   qr_scan_pending = 0;
   HAL_UART_Receive_IT(qr_huart, qr_buf, QR_SIZE); // note - CALL THIS HERE to restart QR scanning after WiFi setup via QR
 
+  thermopile_init(&hadc1, &hadc2);
   initialize_motion_sensor(&hi2c1);
 
   // MOTION SENSOR BUFFER VARIABLES
@@ -154,6 +163,8 @@ int main(void)
   main_display_info(display_handle, num_in_store, queue_length, store_capacity, "Setup complete!", NULL, NULL, NULL);
   get_status(); // get initial queue status for monitor
   HAL_TIM_Base_Start_IT(&htim16);
+
+  int prevent_strobe = 0;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -210,7 +221,7 @@ int main(void)
 			if (valid_entries > 0) {
 				send_entry();
 				--valid_entries;
-				main_display_info(display_handle, num_in_store, queue_length, store_capacity, "Welcome to the ABC Store!", "Please wait to enter...", NULL, NULL);
+				main_display_info(display_handle, num_in_store, queue_length, store_capacity, "     Welcome to the ABC Store!", "Please wait to enter...", NULL, NULL);
 			} else {
 				send_unauthorizedEntry();
 				main_display_info(display_handle, num_in_store, queue_length, store_capacity, "WARNING:", "UNAUTHORIZED ENTRY", NULL, NULL);
@@ -220,13 +231,13 @@ int main(void)
 			printf("SEND RIGHT\r\n");
 			send_exit();
 			send_enable = false;
-			main_display_info(display_handle, num_in_store, queue_length, store_capacity, "Welcome to the ABC Store!", "Please wait to enter...", NULL, NULL);
+			main_display_info(display_handle, num_in_store, queue_length, store_capacity, "     Welcome to the ABC Store!", "Please wait to enter...", NULL, NULL);
 		} else if (right < threshold && left < threshold) {
             // if both motion types below threshold, enable sending
 			if (!send_enable) {
 				printf("SEND ENABLE\r\n");
 				send_enable = true;
-				main_display_info(display_handle, num_in_store, queue_length, store_capacity, "Welcome to the ABC Store!", NULL, NULL, NULL);
+				main_display_info(display_handle, num_in_store, queue_length, store_capacity, "     Welcome to the ABC Store!", NULL, NULL, NULL);
 			}
 		}
 	}
@@ -242,6 +253,33 @@ int main(void)
 			get_ok_to_send();
 		} else if (good_for_send == 1) {
 			send_message();
+		}
+	}
+
+	// TEMPERATURE
+	if (people_checking_in > 0) {
+		printf("CHECKING IN\r\n");
+		if (prevent_strobe == 0) {
+			main_display_info(display_handle, num_in_store, queue_length, store_capacity, "     Welcome!", "Place your forehead near the sensor", "at the top of the kiosk", NULL);
+			prevent_strobe = 1;
+		}
+		int temp = getTemp();
+		char temp_str[4];
+		sprintf(temp_str, "%d", temp);
+		if (temp > TEMP_MAX) { // fever
+			printf("TEMPERATURE TOO HIGH\r\n");
+			main_display_info(display_handle, num_in_store, queue_length, store_capacity, temp_str, "TEMPERATURE IS TOO HIGH", "SEEK STAFF ASSISTANCE", NULL);
+			send_tempError(temp);
+			people_checking_in = 0;
+		} else if (temp >= TEMP_MIN){ // in bounds
+			printf("TEMPERATURE OK PLEASE ENTER\r\n");
+			main_display_info(display_handle, num_in_store, queue_length, store_capacity, temp_str, "Temperature check ok!", "Enter when ready", NULL);
+			++valid_entries;
+			--people_checking_in;
+		}
+		if (people_checking_in == 0) {
+			send_doneCheckingIn();
+			prevent_strobe = 0;
 		}
 	}
     /* USER CODE END WHILE */
@@ -287,11 +325,20 @@ void SystemClock_Config(void)
     Error_Handler();
   }
   PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_RTC|RCC_PERIPHCLK_USART2
-                              |RCC_PERIPHCLK_UART4|RCC_PERIPHCLK_I2C1;
+                              |RCC_PERIPHCLK_UART4|RCC_PERIPHCLK_I2C1
+                              |RCC_PERIPHCLK_ADC;
   PeriphClkInit.Usart2ClockSelection = RCC_USART2CLKSOURCE_PCLK1;
   PeriphClkInit.Uart4ClockSelection = RCC_UART4CLKSOURCE_PCLK1;
   PeriphClkInit.I2c1ClockSelection = RCC_I2C1CLKSOURCE_PCLK1;
+  PeriphClkInit.AdcClockSelection = RCC_ADCCLKSOURCE_PLLSAI1;
   PeriphClkInit.RTCClockSelection = RCC_RTCCLKSOURCE_LSI;
+  PeriphClkInit.PLLSAI1.PLLSAI1Source = RCC_PLLSOURCE_MSI;
+  PeriphClkInit.PLLSAI1.PLLSAI1M = 1;
+  PeriphClkInit.PLLSAI1.PLLSAI1N = 16;
+  PeriphClkInit.PLLSAI1.PLLSAI1P = RCC_PLLP_DIV7;
+  PeriphClkInit.PLLSAI1.PLLSAI1Q = RCC_PLLQ_DIV2;
+  PeriphClkInit.PLLSAI1.PLLSAI1R = RCC_PLLR_DIV2;
+  PeriphClkInit.PLLSAI1.PLLSAI1ClockOut = RCC_PLLSAI1_ADC1CLK;
   if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
   {
     Error_Handler();
@@ -302,6 +349,126 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+}
+
+/**
+  * @brief ADC1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_ADC1_Init(void)
+{
+
+  /* USER CODE BEGIN ADC1_Init 0 */
+
+  /* USER CODE END ADC1_Init 0 */
+
+  ADC_MultiModeTypeDef multimode = {0};
+  ADC_ChannelConfTypeDef sConfig = {0};
+
+  /* USER CODE BEGIN ADC1_Init 1 */
+
+  /* USER CODE END ADC1_Init 1 */
+  /** Common config
+  */
+  hadc1.Instance = ADC1;
+  hadc1.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV1;
+  hadc1.Init.Resolution = ADC_RESOLUTION_12B;
+  hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
+  hadc1.Init.ScanConvMode = ADC_SCAN_DISABLE;
+  hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+  hadc1.Init.LowPowerAutoWait = DISABLE;
+  hadc1.Init.ContinuousConvMode = DISABLE;
+  hadc1.Init.NbrOfConversion = 1;
+  hadc1.Init.DiscontinuousConvMode = DISABLE;
+  hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
+  hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
+  hadc1.Init.DMAContinuousRequests = DISABLE;
+  hadc1.Init.Overrun = ADC_OVR_DATA_PRESERVED;
+  hadc1.Init.OversamplingMode = DISABLE;
+  if (HAL_ADC_Init(&hadc1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /** Configure the ADC multi-mode
+  */
+  multimode.Mode = ADC_MODE_INDEPENDENT;
+  if (HAL_ADCEx_MultiModeConfigChannel(&hadc1, &multimode) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /** Configure Regular Channel
+  */
+  sConfig.Channel = ADC_CHANNEL_7;
+  sConfig.Rank = ADC_REGULAR_RANK_1;
+  sConfig.SamplingTime = ADC_SAMPLETIME_2CYCLES_5;
+  sConfig.SingleDiff = ADC_SINGLE_ENDED;
+  sConfig.OffsetNumber = ADC_OFFSET_NONE;
+  sConfig.Offset = 0;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN ADC1_Init 2 */
+
+  /* USER CODE END ADC1_Init 2 */
+
+}
+
+/**
+  * @brief ADC2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_ADC2_Init(void)
+{
+
+  /* USER CODE BEGIN ADC2_Init 0 */
+
+  /* USER CODE END ADC2_Init 0 */
+
+  ADC_ChannelConfTypeDef sConfig = {0};
+
+  /* USER CODE BEGIN ADC2_Init 1 */
+
+  /* USER CODE END ADC2_Init 1 */
+  /** Common config
+  */
+  hadc2.Instance = ADC2;
+  hadc2.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV1;
+  hadc2.Init.Resolution = ADC_RESOLUTION_12B;
+  hadc2.Init.DataAlign = ADC_DATAALIGN_RIGHT;
+  hadc2.Init.ScanConvMode = ADC_SCAN_DISABLE;
+  hadc2.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+  hadc2.Init.LowPowerAutoWait = DISABLE;
+  hadc2.Init.ContinuousConvMode = DISABLE;
+  hadc2.Init.NbrOfConversion = 1;
+  hadc2.Init.DiscontinuousConvMode = DISABLE;
+  hadc2.Init.ExternalTrigConv = ADC_SOFTWARE_START;
+  hadc2.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
+  hadc2.Init.DMAContinuousRequests = DISABLE;
+  hadc2.Init.Overrun = ADC_OVR_DATA_PRESERVED;
+  hadc2.Init.OversamplingMode = DISABLE;
+  if (HAL_ADC_Init(&hadc2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /** Configure Regular Channel
+  */
+  sConfig.Channel = ADC_CHANNEL_10;
+  sConfig.Rank = ADC_REGULAR_RANK_1;
+  sConfig.SamplingTime = ADC_SAMPLETIME_2CYCLES_5;
+  sConfig.SingleDiff = ADC_SINGLE_ENDED;
+  sConfig.OffsetNumber = ADC_OFFSET_NONE;
+  sConfig.Offset = 0;
+  if (HAL_ADC_ConfigChannel(&hadc2, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN ADC2_Init 2 */
+
+  /* USER CODE END ADC2_Init 2 */
+
 }
 
 /**

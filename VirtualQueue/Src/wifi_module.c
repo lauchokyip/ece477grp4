@@ -29,6 +29,7 @@ int queue_length; // length of queue
 int store_capacity; // store capcity
 int num_in_store; // number of people in store
 int valid_entries; // the number of people currently allowed to enter the store
+int people_checking_in; // the number of people whos temperatures we need to take
 
 UART_HandleTypeDef *esp_huart; // UART handle to ESP
 
@@ -51,6 +52,7 @@ bool esp8266_init(UART_HandleTypeDef* huart, SPI_HandleTypeDef* display, int wif
 	ready_for_next_message = 1;
 	message_pending_handling = 0;
 	message_queue_head = NULL;
+	people_checking_in = 0;
 
 	// reset and set basic params
 	if (fast != 1) {
@@ -281,31 +283,10 @@ void handle_message_response() {
 		} else {
 			print_out_barcode_msg(parsed_message);
 			if (parsed_message->isCheckingIn == true) { // take temps
-				int i;
-				for (i = 0; i < parsed_message->customer.numPeople; ++i) {
-					printf("CHECKING IN\r\n");
-					main_display_info(display_handle, num_in_store, queue_length, store_capacity, "Welcome:", parsed_message->customer.name, "Place your forehead near the sensor", "at the top of the kiosk");
-					HAL_Delay(5000);
-					int temp = fake_temp();
-					char temp_str[4];
-					sprintf(temp_str, "%d", temp);
-					if (temp > TEMP_MAX) { // fever
-						printf("TEMPERATURE TOO HIGH\r\n");
-						main_display_info(display_handle, num_in_store, queue_length, store_capacity, temp_str, "TEMPERATURE IS TOO HIGH", "SEEK STAFF ASSISTANCE", NULL);
-						send_tempError(temp);
-					} else if (temp < TEMP_MIN) { // likely not a real temp, too low
-						printf("TEMPERATURE TOO LOW TRY AGAIN\r\n");
-						main_display_info(display_handle, num_in_store, queue_length, store_capacity, temp_str, "Temperature too low", "Please get closer", "or ask for assistance");
-						--i;
-					} else { // in bounds
-						printf("TEMPERATURE OK PLEASE ENTER\r\n");
-						main_display_info(display_handle, num_in_store, queue_length, store_capacity, temp_str, "Temperature check ok!", "Enter when ready", NULL);
-						++valid_entries;
-					}
-				}
+				people_checking_in += parsed_message->customer.numPeople;
 			} else if (parsed_message->customer.numPeople == 0) { // can only occur on first scan
 				printf("FIRST SCAN, WELCOME TO QUEUE\r\n");
-				main_display_info(display_handle, num_in_store, queue_length, store_capacity, "Welcome to the ABC Store!", "You are now in the Virtual Queue!", NULL, NULL);
+				main_display_info(display_handle, num_in_store, queue_length, store_capacity, "     Welcome to the ABC Store!", "You are now in the Virtual Queue!", NULL, NULL);
 			} else {
 				printf("NOT YOUR TURN\r\n");
 				main_display_info(display_handle, num_in_store, queue_length, store_capacity, "Sorry,", parsed_message->customer.name, "It is not your turn to enter.", "Check your device for your place in the queue.");
@@ -378,6 +359,11 @@ void send_tempError(int temp) {
 
 void send_unauthorizedEntry() {
 	uint8_t url[] = "https://virtualqueue477.herokuapp.com/unauthorizedEntry?storeSecret=grp4";
+	new_message(2, url, sizeof(url)/sizeof(uint8_t)-1);
+}
+
+void send_doneCheckingIn() {
+	uint8_t url[] = "https://virtualqueue477.herokuapp.com/checkInDone?storeSecret=grp4";
 	new_message(2, url, sizeof(url)/sizeof(uint8_t)-1);
 }
 

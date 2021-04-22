@@ -32,6 +32,7 @@ extern int queue_length;
 extern int store_capacity;
 extern int num_in_store;
 extern int valid_entries;
+extern int people_checking_in;
 extern UART_HandleTypeDef *esp_huart;
 
 WifiMessage* message_queue_head; // head of message queue
@@ -47,5 +48,6 @@ void send_exit();
 void get_status();
 void send_tempError();
 void send_unauthorizedEntry();
+void send_doneCheckingIn();
 
 #endif
