@@ -244,27 +244,47 @@ void UART4_IRQHandler(void)
   if(RESET != __HAL_UART_GET_FLAG(&huart4, UART_FLAG_IDLE)) {
   	__HAL_UART_CLEAR_IDLEFLAG(&huart4);
   	HAL_UART_DMAStop(&huart4);
-    main_display_info(display_handle, num_in_store, queue_length, store_capacity, esp_recv_buf, NULL, NULL, NULL);
-    // determine current state and state to transition to
+  	//main_display_info(display_handle, num_in_store, queue_length, store_capacity, esp_recv_buf, NULL, NULL, NULL);
+//  	debug_print(display_handle, esp_recv_buf);
+  	// determine current state and state to transition to
     // in message transmission process
+  	if (wait_for_tcp == 1) {
+  		if (strstr(esp_recv_buf, "OK") == NULL && strstr(esp_recv_buf, "ALREADY CONNECTED") == NULL) { // have not made tcp connection
+		  HAL_UART_Receive_DMA(esp_huart, esp_recv_buf, 2000);
+		  printf("Not good to send: %s\r\n", esp_recv_buf);
+		  got_unexpected = 1;
+		  memcpy(unexpected_return, esp_recv_buf, 500);
+		  return;
+		} else {
+		  got_unexpected = 0;
+		  wait_for_tcp = 0;
+		  good_to_get_ok = 1;
+		}
+  	}
   	if (wait_for_send_ok == 1) {
   		if (strstr(esp_recv_buf, ">") == NULL) { // have not gotten permission to send
 			  HAL_UART_Receive_DMA(esp_huart, esp_recv_buf, 2000);
 			  printf("Not good to send: %s\r\n", esp_recv_buf);
+			  got_unexpected = 1;
+			  memcpy(unexpected_return, esp_recv_buf, 500);
 			  return;
-        } else {
+      } else {
+    	got_unexpected = 0;
         wait_for_send_ok = 0;
         good_for_send = 1;
-        }
+      }
   	} else if (wait_for_message_response == 1) {
   		if (strstr(esp_recv_buf, "HTTP") == NULL) { // have not gotten actual server response
-            HAL_UART_Receive_DMA(esp_huart, esp_recv_buf, 2000);
-            printf("Not real response: %s\r\n", esp_recv_buf);
-            return;
-        } else {
+        HAL_UART_Receive_DMA(esp_huart, esp_recv_buf, 2000);
+        printf("Not real response: %s\r\n", esp_recv_buf);
+        got_unexpected = 1;
+        memcpy(unexpected_return, esp_recv_buf, 500);
+        return;
+      } else {
+    	got_unexpected = 0;
         wait_for_message_response = 0;
         message_pending_handling = 1;
-        }
+      }
   	}
   }
   /* USER CODE END UART4_IRQn 1 */

@@ -23,7 +23,6 @@
 #include "stm32l4xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "wifi_module.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -33,7 +32,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
- 
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -240,33 +239,6 @@ void UART4_IRQHandler(void)
   HAL_UART_IRQHandler(&huart4);
   /* USER CODE BEGIN UART4_IRQn 1 */
 
-  // If this is an IDLE interrupt
-  if(RESET != __HAL_UART_GET_FLAG(&huart4, UART_FLAG_IDLE)) {
-  	__HAL_UART_CLEAR_IDLEFLAG(&huart4);
-  	HAL_UART_DMAStop(&huart4);
-    main_display_info(display_handle, num_in_store, queue_length, store_capacity, esp_recv_buf, NULL, NULL, NULL);
-    // determine current state and state to transition to
-    // in message transmission process
-  	if (wait_for_send_ok == 1) {
-  		if (strstr(esp_recv_buf, ">") == NULL) { // have not gotten permission to send
-			  HAL_UART_Receive_DMA(esp_huart, esp_recv_buf, 2000);
-			  printf("Not good to send: %s\r\n", esp_recv_buf);
-			  return;
-        } else {
-        wait_for_send_ok = 0;
-        good_for_send = 1;
-        }
-  	} else if (wait_for_message_response == 1) {
-  		if (strstr(esp_recv_buf, "HTTP") == NULL) { // have not gotten actual server response
-            HAL_UART_Receive_DMA(esp_huart, esp_recv_buf, 2000);
-            printf("Not real response: %s\r\n", esp_recv_buf);
-            return;
-        } else {
-        wait_for_message_response = 0;
-        message_pending_handling = 1;
-        }
-  	}
-  }
   /* USER CODE END UART4_IRQn 1 */
 }
 
