@@ -36,9 +36,10 @@ int getTemp() {
 		thermopileV = 0;
 	}
 	else {
-		thermopileV = (thermopileV_raw - factor) / 1.0;  //mV * some scaling, 3.0 can change up or down to scale Tobj
+		thermopileV = (thermopileV_raw - factor) / 3.0;  //mV * some scaling, 3.0 can change up or down to scale Tobj
 	}
-	Tobj = pow(((thermopileV * 1000) / (s * ee)) + pow(Tsen, 4 - 2.49), 1.0f / (4 - 2.49));   //dirac constant (subtracted from 4) to be changed accordingly; bigger dirac = higher temperature
+	Tsen = 30;
+	Tobj = pow(      ((thermopileV * 1000) / (s * ee)) + pow(Tsen, 4 - 2.4 - (Tsen - 22)  * 0.02f)       ,        1.0f / (4 - 2.4 - (Tsen - 22) * 0.02f)     );   //dirac constant (subtracted from 4) to be changed accordingly; bigger dirac = higher temperature
 	return Tobj;
 }
 

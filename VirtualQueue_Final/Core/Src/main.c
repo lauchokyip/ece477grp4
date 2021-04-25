@@ -234,23 +234,23 @@ int main(void)
 			if (valid_entries > 0) {
 				send_entry();
 				--valid_entries;
-				main_display_info(display_handle, num_in_store, queue_length, store_capacity, "     Welcome to the ABC Store!", "Please wait to enter...", NULL, NULL);
+				main_display_info(&hspi1, num_in_store, queue_length, store_capacity, "     Welcome to the ABC Store!", "Please wait to enter...", NULL, NULL);
 			} else {
 				send_unauthorizedEntry();
-				main_display_info(display_handle, num_in_store, queue_length, store_capacity, "WARNING:", "UNAUTHORIZED ENTRY", NULL, NULL);
+				main_display_info(&hspi1, num_in_store, queue_length, store_capacity, "WARNING:", "UNAUTHORIZED ENTRY", NULL, NULL);
 			}
 			send_enable = false;
 		} else if (right > threshold && send_enable) {
 			printf("SEND RIGHT\r\n");
 			send_exit();
 			send_enable = false;
-			main_display_info(display_handle, num_in_store, queue_length, store_capacity, "     Welcome to the ABC Store!", "Please wait to enter...", NULL, NULL);
+			main_display_info(&hspi1, num_in_store, queue_length, store_capacity, "     Welcome to the ABC Store!", "Please wait to enter...", NULL, NULL);
 		} else if (right < threshold && left < threshold) {
             // if both motion types below threshold, enable sending
 			if (!send_enable) {
 				printf("SEND ENABLE\r\n");
 				send_enable = true;
-				main_display_info(display_handle, num_in_store, queue_length, store_capacity, "     Welcome to the ABC Store!", NULL, NULL, NULL);
+				main_display_info(&hspi1, num_in_store, queue_length, store_capacity, "     Welcome to the ABC Store!", NULL, NULL, NULL);
 			}
 		}
 	}
@@ -273,7 +273,7 @@ int main(void)
 	if (people_checking_in > 0) {
 		printf("CHECKING IN\r\n");
 		if (prevent_strobe == 0) {
-			main_display_info(display_handle, num_in_store, queue_length, store_capacity, "     Welcome!", "Place your forehead near the sensor", "at the top of the kiosk", NULL);
+			main_display_info(&hspi1, num_in_store, queue_length, store_capacity, "     Welcome!", "Place your forehead near the sensor", "at the top of the kiosk", NULL);
 			//HAL_Delay(3000);
 			prevent_strobe = 1;
 		}
@@ -284,8 +284,9 @@ int main(void)
 			char temp_str[4];
 			sprintf(temp_str, "%d", temp);
 
-
+//purposeful Tsen manipulation
 			int Tsen = getTsen();
+			Tsen = 30;
 			char temp_str2[4];
 			sprintf(temp_str2, "%d", Tsen);
 
@@ -297,7 +298,7 @@ int main(void)
 			char temp_str4[4];
 			sprintf(temp_str4, "%d", Rsen);
 
-			HAL_Delay(1000);
+			HAL_Delay(2000);
 			main_display_info(&hspi1, num_in_store, queue_length, store_capacity, temp_str,temp_str2 , temp_str3, temp_str4);
 		}
 		//end temperature test
@@ -307,12 +308,12 @@ int main(void)
 		sprintf(temp_str, "%d", temp);
 		if (temp > TEMP_MAX) { // fever
 			printf("TEMPERATURE TOO HIGH\r\n");
-			main_display_info(display_handle, num_in_store, queue_length, store_capacity, temp_str, "TEMPERATURE IS TOO HIGH", "SEEK STAFF ASSISTANCE", NULL);
+			main_display_info(&hspi1, num_in_store, queue_length, store_capacity, temp_str, "TEMPERATURE IS TOO HIGH", "SEEK STAFF ASSISTANCE", NULL);
 			send_tempError(temp);
 			people_checking_in = 0;
 		} else if (temp >= TEMP_MIN){ // in bounds
 			printf("TEMPERATURE OK PLEASE ENTER\r\n");
-			main_display_info(display_handle, num_in_store, queue_length, store_capacity, temp_str, "Temperature check ok!", "Enter when ready", NULL);
+			main_display_info(&hspi1, num_in_store, queue_length, store_capacity, temp_str, "Temperature check ok!", "Enter when ready", NULL);
 			++valid_entries;
 			--people_checking_in;
 		}
