@@ -546,6 +546,7 @@ void set_cursor(SPI_HandleTypeDef *hspi, uint16_t x, uint16_t y){
 void text_write(SPI_HandleTypeDef *hspi, char* buffer, uint16_t len) {
 	SPI_write_command(hspi, RA8875_MRWC);
 
+
 	for(uint16_t i = 0; i < len; i++) {
 		uint8_t each_char = buffer[i];
 		SPI_write_data(hspi, &each_char);
@@ -619,12 +620,11 @@ void main_display_init(SPI_HandleTypeDef *hspi) {
 	 PWM1_out(hspi, 255); // set blacklight to the highest
 	 fill_screen(hspi, RA8875_BLACK);
 	 text_mode(hspi); // Switch from graphics mode to text mode
-
 }
 
 void print_message(SPI_HandleTypeDef *hspi, char *msg, int height) {
 	if(msg != NULL) {
-		set_cursor(hspi, 15, 235 + height * next_line_height);
+		set_cursor(hspi,70, 235 + height * next_line_height);
 		text_write(hspi, msg, strlen(msg)); // Write the string to the display
 	}
 }
@@ -663,6 +663,12 @@ void main_display_info(SPI_HandleTypeDef *hspi, int num_people_in_store, int num
 	print_message(hspi, msg4, 3);
 }
 
-
+void debug_print(SPI_HandleTypeDef *hspi, char* str_out) {
+	clear_screen(hspi);
+	set_text_color(hspi, RA8875_WHITE);
+	enlarge_text(hspi, 1);
+	set_cursor(hspi, 15, 20);
+	text_write(hspi, str_out, 1000);
+}
 
 

@@ -24,13 +24,22 @@ int wait_for_message_response; // if waiting for a response from the web server
 int good_for_send; // if ok to send data to ESP
 int ready_for_next_message; // if ready to start from beginning with new message
 int message_pending_handling; // if a response from the server needs handling
+int wait_for_tcp;
+int good_to_get_ok;
+int wait_tcp_close;
+int close_tcp;
 // below is information for the display, so it can be updated externally (ex: error messages) w/o having to get status
 int queue_length; // length of queue
 int store_capacity; // store capcity
 int num_in_store; // number of people in store
 int valid_entries; // the number of people currently allowed to enter the store
 int people_checking_in; // the number of people whos temperatures we need to take
+int no_strobe; //prevents strobe
+uint8_t unexpected_return[500];
+int got_unexpected;
+int advanced_wifi_state;
 
+WifiMessage* message_queue_head;
 UART_HandleTypeDef *esp_huart; // UART handle to ESP
 
 /* 	set up the module and connects to internet
@@ -53,6 +62,13 @@ bool esp8266_init(UART_HandleTypeDef* huart, SPI_HandleTypeDef* display, int wif
 	message_pending_handling = 0;
 	message_queue_head = NULL;
 	people_checking_in = 0;
+	got_unexpected = 0;
+	wait_for_tcp = 0;
+	good_to_get_ok = 0;
+	wait_tcp_close = 0;
+	close_tcp = 0;
+	advanced_wifi_state = 0;
+	memset(esp_recv_buf, 0, 2000);
 
 	// reset and set basic params
 	if (fast != 1) {
@@ -69,7 +85,9 @@ bool esp8266_init(UART_HandleTypeDef* huart, SPI_HandleTypeDef* display, int wif
 		HAL_UART_Transmit(esp_huart, mode, sizeof(mode)/sizeof(uint8_t), 100);
 		HAL_UART_Receive(esp_huart, esp_recv_buf, 2000, 500);
 		if (strstr(esp_recv_buf, "OK") == NULL) {
-			main_display_info(display_handle, num_in_store, queue_length, store_capacity, "AN ERROR HAS OCCURRED", "ERROR: WIFI MODE", NULL, NULL);
+			printf("WIFI MODE FAIL: %s\r\n", esp_recv_buf);
+			//main_display_init(display_handle);
+			main_display_info(display_handle, num_in_store, queue_length, store_capacity, "AN ERROR HAS OCCURRED", "ERROR: WIFI MODE", esp_recv_buf, NULL);
 			return false;
 		}
 		printf("%s\r\n", esp_recv_buf);
@@ -81,24 +99,49 @@ bool esp8266_init(UART_HandleTypeDef* huart, SPI_HandleTypeDef* display, int wif
 		HAL_UART_Transmit(esp_huart, numcons, sizeof(numcons)/sizeof(uint8_t), 100);
 		HAL_UART_Receive(esp_huart, esp_recv_buf, 2000, 500);
 		if (strstr(esp_recv_buf, "OK") == NULL) {
+			printf("WIFI NUMCON FAIL: %s\r\n", esp_recv_buf);
+			//main_display_init(display_handle);
 			main_display_info(display_handle, num_in_store, queue_length, store_capacity, "AN ERROR HAS OCCURRED", "ERROR: WIFI NUMCONS", NULL, NULL);
 			return false;
 		}
 		printf("%s\r\n", esp_recv_buf);
 		memset(esp_recv_buf, 0, 2000);
 	}
+	main_display_init(display_handle);
 
 	// connect to given wifi
 	if (wifi != 0) {
 	  printf("connect to wifi...\r\n");
 	  if (wifi == 2) { // use nate's hotspot (testing only)
-		  uint8_t connect[] = "AT+CWJAP=\"TEST-HOTSPOT\",\"65c9O21=\"\r\n";
+		  uint8_t connect[] = "AT+CWJAP=\"TEST-HOTSPOT\",\"12345678\"\r\n"; //"DESKTOP-9GSOS18 1981" -> "89!2P9i3"; "TEST-HOTSPOT" -> "65c9O21="
+		  //uint8_t connect[] = "AT+CWJAP=\"TEST-HOTSPOT\",\"65c9O21=\"\r\n";
+		  no_strobe = 0;
 		  HAL_UART_Transmit(esp_huart, connect, sizeof(connect)/sizeof(uint8_t), 100);
-		  HAL_UART_Receive(esp_huart, esp_recv_buf, 2000, 10000);
-		  if (strstr(esp_recv_buf, "WIFI GOT IP") == NULL) {
-		  	main_display_info(display_handle, num_in_store, queue_length, store_capacity, "AN ERROR HAS OCCURRED", "ERROR: WIFI CONNECT", NULL, NULL);
-		  	return false;
+		  int count = 0;
+		  while(1) {
+			  //memset(esp_recv_buf, 0, 2000);
+			  HAL_UART_Receive(esp_huart, esp_recv_buf, 2000, 10000);
+
+			  if (strstr(esp_recv_buf, "OK") != NULL) {
+			 	 	break;
+			  }
+			  ++count;
+			  if (count > 1) {
+				  //main_display_info(display_handle, num_in_store, queue_length, store_capacity, "AN ERROR HAS OCCURRED", "ERROR: WIFI CONNECT", esp_recv_buf, NULL);
+			  }
+			  memset(esp_recv_buf, 0, 2000);
 		  }
+		  /*
+		  int count = 0;
+		  while (strstr(esp_recv_buf, "WIFI GOT IP") == NULL) {
+			  HAL_UART_Receive(esp_huart, esp_recv_buf, 2000, 5000);
+			  ++count;
+			  if (count > 100) {
+					main_display_info(display_handle, num_in_store, queue_length, store_capacity, "AN ERROR HAS OCCURRED", "ERROR: WIFI CONNECT", NULL, NULL);
+				  	return false;
+			  }
+		  }
+		  */
 		  printf("%s\r\n", esp_recv_buf);
 		  memset(esp_recv_buf, 0, 2000);
 	  } else { // using qr
@@ -121,7 +164,7 @@ bool esp8266_init(UART_HandleTypeDef* huart, SPI_HandleTypeDef* display, int wif
 		  }
 		  printf("%s\r\n", wifi_pass);
 		  wifi_pass[strlen(wifi_pass)-1] = 0; // remove ending newline
-		  main_display_info(display_handle, num_in_store, queue_length, store_capacity, "Starting up...", "Please wait", NULL, NULL);
+		  //main_display_info(display_handle, num_in_store, queue_length, store_capacity, "Starting up...", "Please wait", NULL, NULL);
 
 		  int c_size = strlen(wifi_name) + strlen(wifi_pass) + 16;
 		  uint8_t connect[c_size];
@@ -129,14 +172,17 @@ bool esp8266_init(UART_HandleTypeDef* huart, SPI_HandleTypeDef* display, int wif
 		  sprintf(connect_str, "AT+CWJAP=\"%s\",\"%s\"\r\n", wifi_name, wifi_pass);
 		  printf("Connection command: %s\r\n", connect_str);
 		  str_to_uint(connect_str, connect, 216);
+		  main_display_info(display_handle, num_in_store, queue_length, store_capacity, "Connecting to WiFi...", NULL, NULL, NULL);
 		  HAL_UART_Transmit(esp_huart, connect, sizeof(connect)/sizeof(uint8_t), 100);
 		  HAL_UART_Receive(esp_huart, esp_recv_buf, 2000, 5000);
 		  int count = 0;
-		  while (strstr(esp_recv_buf, "WIFI GOT IP") == NULL) {
+		  while (strstr(esp_recv_buf, "OK") == NULL && strstr(esp_recv_buf, "GOT IP") == NULL) {
+			  printf("not connect: %s\r\n", esp_recv_buf);
+			  //main_display_info(display_handle, num_in_store, queue_length, store_capacity, "Connecting to WiFi...", esp_recv_buf, NULL, NULL);
 			  HAL_UART_Receive(esp_huart, esp_recv_buf, 2000, 5000);
 			  ++count;
-			  if (count > 10) {
-					main_display_info(display_handle, num_in_store, queue_length, store_capacity, "AN ERROR HAS OCCURRED", "ERROR: WIFI CONNECT", NULL, NULL);
+			  if (count > 1) {
+					main_display_info(display_handle, num_in_store, queue_length, store_capacity, "AN ERROR HAS OCCURRED", "ERROR: WIFI CONNECT", esp_recv_buf, NULL);
 				  	return false;
 			  }
 		  }
@@ -151,7 +197,7 @@ bool esp8266_init(UART_HandleTypeDef* huart, SPI_HandleTypeDef* display, int wif
 	HAL_UART_Transmit(esp_huart, start, sizeof(start)/sizeof(uint8_t), 100);
 	HAL_UART_Receive(esp_huart, esp_recv_buf, 2000, 5000);
 	if (strstr(esp_recv_buf, "OK") == NULL) {
-		main_display_info(display_handle, num_in_store, queue_length, store_capacity, "AN ERROR HAS OCCURRED", "ERROR: WIFI TCP", NULL, NULL);
+		//main_display_info(display_handle, num_in_store, queue_length, store_capacity, "AN ERROR HAS OCCURRED", "ERROR: WIFI TCP", esp_recv_buf, NULL);
 		return false;
 	}
 	printf("%s\r\n", esp_recv_buf);
@@ -189,7 +235,7 @@ void new_message(int type, uint8_t* url, int url_len) {
 
 // gets ok from ESP to send over data (GET request)
 void get_ok_to_send() {
-	ready_for_next_message = 0;
+	good_to_get_ok = 0;
 	wait_for_send_ok = 1;
 	WifiMessage *m = message_queue_head;
 	int digits = count_digits(m->url_len + GET_LEN);
@@ -240,7 +286,7 @@ void handle_message_response() {
 		printf("HTTP ERROR\r\n");
 		char error[19];
 		sprintf(error, "ERROR: HTTP FAIL %d", m->type);
-		main_display_info(display_handle, num_in_store, queue_length, store_capacity, "AN ERROR HAS OCCURRED", error, NULL, NULL);
+		main_display_info(display_handle, num_in_store, queue_length, store_capacity, "AN ERROR HAS OCCURRED", error, esp_recv_buf, NULL);
 		message_queue_head = message_queue_head->next;
 		free(m->url);
 		free(m);
@@ -254,7 +300,7 @@ void handle_message_response() {
 	char* end = rindex(esp_recv_buf, '}');
 	int json_len = end-start + 1;
 	printf("JSON length: %d\r\n", json_len);
-	if (json_len <= 0) {
+	if (json_len <= 1) {
 		printf("ERROR: JSON NOT FOUND IN STRING\r\n");
 		char error[18];
 		sprintf(error, "ERROR: JSON DNE %d", m->type);
@@ -314,11 +360,13 @@ void handle_message_response() {
 			sprintf(error, "ERROR: JSON FAIL %d", m->type);
 			main_display_info(display_handle, num_in_store, queue_length, store_capacity, "AN ERROR HAS OCCURRED", error, NULL, NULL);
 		} else {
-			print_out_status_msg(parsed_message);
-			queue_length = parsed_message->queueLength;
-			num_in_store = parsed_message->numPeopleInStore;
-			store_capacity = parsed_message->maxCapacity;
-			main_display_info(display_handle, num_in_store, queue_length, store_capacity, "     Welcome to ABC store!", NULL, NULL, NULL);
+			if(queue_length != parsed_message->queueLength || num_in_store != parsed_message->numPeopleInStore || store_capacity != parsed_message->maxCapacity){
+				print_out_status_msg(parsed_message);
+				queue_length = parsed_message->queueLength;
+				num_in_store = parsed_message->numPeopleInStore;
+				store_capacity = parsed_message->maxCapacity;
+				main_display_info(display_handle, num_in_store, queue_length, store_capacity, "     Welcome to ABC store!", NULL, NULL, NULL);
+			}
 			free(parsed_message);
 		}
 	}
@@ -330,6 +378,44 @@ void handle_message_response() {
 	message_pending_handling = 0;
 	ready_for_next_message = 1;
 	printf("DONE HANDLING RESPONSE\r\n");
+}
+
+void tcp_connect() {
+	ready_for_next_message = 0;
+	wait_for_tcp = 1;
+	uint8_t start[] = "AT+CIPSTART=\"TCP\",\"virtualqueue477.herokuapp.com\",80\r\n";
+	memset(esp_recv_buf, 0, 2000);
+	HAL_UART_Transmit(esp_huart, start, sizeof(start)/sizeof(uint8_t), 100);
+	HAL_UART_Receive_DMA(esp_huart, esp_recv_buf, 2000);
+}
+
+void tcp_close() {
+	close_tcp = 0;
+	wait_tcp_close = 1;
+	uint8_t start[] = "AT+CIPCLOSE\r\n";
+	memset(esp_recv_buf, 0, 2000);
+	HAL_UART_Transmit(esp_huart, start, sizeof(start)/sizeof(uint8_t), 100);
+	HAL_UART_Receive_DMA(esp_huart, esp_recv_buf, 2000);
+}
+
+void abort_message() {
+	WifiMessage *m = message_queue_head;
+	message_queue_head = message_queue_head->next;
+	free(m->url);
+	free(m);
+	advanced_wifi_state = 0;
+	wait_for_send_ok = 0;
+	wait_for_message_response = 0;
+	good_for_send = 0;
+	ready_for_next_message = 1;
+	message_pending_handling = 0;
+	people_checking_in = 0;
+	got_unexpected = 0;
+	wait_for_tcp = 0;
+	good_to_get_ok = 0;
+	wait_tcp_close = 0;
+	close_tcp = 0;
+	return;
 }
 
 // enqueues an entry message
@@ -352,8 +438,10 @@ void get_status() {
 
 void send_tempError(int temp) {
 	int digits = count_digits(temp);
+	char url_str[TEMP_LEN + digits];
 	uint8_t url[TEMP_LEN + digits];
-	sprintf(url, "https://virtualqueue477.herokuapp.com/tempError?storeSecret=grp4&temp=%d", temp);
+	sprintf(url_str, "https://virtualqueue477.herokuapp.com/tempError?storeSecret=grp4&temp=%d", temp);
+	str_to_uint(url_str, url, TEMP_LEN+digits);
 	new_message(2, url, TEMP_LEN + digits);
 }
 

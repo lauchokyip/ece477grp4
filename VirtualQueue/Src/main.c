@@ -26,7 +26,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
-#include "retarget.h"
+//#include "retarget.h"
 #include "utility.h"
 #include "wifi_module.h"
 #include "qr_scanner.h"
@@ -60,6 +60,7 @@ LCD_HandleTypeDef hlcd;
 SPI_HandleTypeDef hspi1;
 
 TIM_HandleTypeDef htim16;
+TIM_HandleTypeDef htim17;
 
 UART_HandleTypeDef huart4;
 UART_HandleTypeDef huart2;
@@ -75,11 +76,12 @@ static void MX_DMA_Init(void);
 static void MX_LCD_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_UART4_Init(void);
-static void MX_I2C1_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_TIM16_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_ADC2_Init(void);
+static void MX_I2C1_Init(void);
+static void MX_TIM17_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -122,11 +124,12 @@ int main(void)
   MX_LCD_Init();
   MX_USART2_UART_Init();
   MX_UART4_Init();
-  MX_I2C1_Init();
   MX_SPI1_Init();
   MX_TIM16_Init();
   MX_ADC1_Init();
   MX_ADC2_Init();
+  MX_I2C1_Init();
+  MX_TIM17_Init();
   /* USER CODE BEGIN 2 */
   //RetargetInit(&huart2);
   printf("\r\nStarting\r\n");
@@ -135,34 +138,49 @@ int main(void)
   queue_length = 0; // init these first so the display works
   store_capacity = 0;
   num_in_store = 0;
-  main_display_init(&hspi1); // THIS SHOULD INIT FIRST so other modules can use it for error printing
-  main_display_info(&hspi1, num_in_store, queue_length, store_capacity, "Starting up...", "Please wait", NULL, NULL);
+
   qr_scanner_init(&huart2, 0); // note - THIS SHOULD BE CALLED BEFORE esp8266_init() if using QR scanning for WiFi setup
-  bool esp_ok = esp8266_init(&huart4, &hspi1, 2, 1);
+
+  bool esp_ok = esp8266_init(&huart4, &hspi1, 1, 0);
   if (esp_ok == false) {
-	  return;
+	  //main_display_info(&hspi1, num_in_store, queue_length, store_capacity, "Wifi doesn't set up properly", NULL, NULL, NULL);
+	  return 1;
   }
+
+  //main_display_init(&hspi1);
+  main_display_info(&hspi1, num_in_store, queue_length, store_capacity, "Starting up...", "Please wait", NULL, NULL);
+
   qr_scan_pending = 0;
   HAL_UART_Receive_IT(qr_huart, qr_buf, QR_SIZE); // note - CALL THIS HERE to restart QR scanning after WiFi setup via QR
 
   thermopile_init(&hadc1, &hadc2);
-  initialize_motion_sensor(&hi2c1);
+
+  bool motion_sensor_ok = initialize_motion_sensor(&hi2c1);
+  if (motion_sensor_ok != true) {
+	  main_display_info(&hspi1, num_in_store, queue_length, store_capacity, "motion sensor fails", NULL, NULL, NULL);
+	  return 1;
+  }
+
 
   // MOTION SENSOR BUFFER VARIABLES
   int pir_size = 50; // size of buffer
   int pir_samples[pir_size]; // buffer
-  int threshold = 6; // number of readings in buffer to trigger motion
+  int threshold = 5; // number of readings in buffer to trigger motion
   int left = 0; // number of lefts
   int right = 0; // number of rights
   int nothing = pir_size; // number of no motions
   bool send_enable = false; // flag to prevent constantly sending when threshold met
   int sample_i = 0; // sample index
-  memset(pir_samples, 0, pir_size);
+  for(; sample_i < pir_size; ++sample_i) {
+	  pir_samples[sample_i] = 0;
+  }
+  sample_i = 0;
 
   printf("INIT DONE\r\n");
-  main_display_info(display_handle, num_in_store, queue_length, store_capacity, "Setup complete!", NULL, NULL, NULL);
-  get_status(); // get initial queue status for monitor
+  main_display_info(&hspi1, num_in_store, queue_length, store_capacity, "Setup complete!", NULL, NULL, NULL);
+  //get_status(); // get initial queue status for monitor
   HAL_TIM_Base_Start_IT(&htim16);
+  HAL_TIM_Base_Start_IT(&htim17);
 
   int prevent_strobe = 0;
   /* USER CODE END 2 */
@@ -171,6 +189,7 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+
     // QR HANDLING
     // if a qr scan has OCCURRED, handle
 	if (qr_scan_pending == 1) {
@@ -208,6 +227,17 @@ int main(void)
 	      ++nothing;
 	    }
 
+		if (sample_i % 10 == 0) {
+			printf("left: %d    right: %d    nothing: %d\r\n", left, right, nothing);
+			if (nothing != pir_size) {
+				int i;
+				for (i = 0; i < pir_size; ++i) {
+					printf("%d ", pir_samples[i]);
+				}
+				printf("\r\n");
+			}
+		}
+
         // increment buffer index
 		sample_i++;
 		if (sample_i >= pir_size) {
@@ -221,23 +251,23 @@ int main(void)
 			if (valid_entries > 0) {
 				send_entry();
 				--valid_entries;
-				main_display_info(display_handle, num_in_store, queue_length, store_capacity, "     Welcome to the ABC Store!", "Please wait to enter...", NULL, NULL);
+				main_display_info(&hspi1, num_in_store, queue_length, store_capacity, "     Welcome to the ABC Store!", "Please wait to enter...", NULL, NULL);
 			} else {
 				send_unauthorizedEntry();
-				main_display_info(display_handle, num_in_store, queue_length, store_capacity, "WARNING:", "UNAUTHORIZED ENTRY", NULL, NULL);
+				main_display_info(&hspi1, num_in_store, queue_length, store_capacity, "WARNING:", "UNAUTHORIZED ENTRY", NULL, NULL);
 			}
 			send_enable = false;
 		} else if (right > threshold && send_enable) {
 			printf("SEND RIGHT\r\n");
 			send_exit();
 			send_enable = false;
-			main_display_info(display_handle, num_in_store, queue_length, store_capacity, "     Welcome to the ABC Store!", "Please wait to enter...", NULL, NULL);
+			main_display_info(&hspi1, num_in_store, queue_length, store_capacity, "     Welcome to the ABC Store!", "Please wait to enter...", NULL, NULL);
 		} else if (right < threshold && left < threshold) {
             // if both motion types below threshold, enable sending
 			if (!send_enable) {
 				printf("SEND ENABLE\r\n");
 				send_enable = true;
-				main_display_info(display_handle, num_in_store, queue_length, store_capacity, "     Welcome to the ABC Store!", NULL, NULL, NULL);
+				main_display_info(&hspi1, num_in_store, queue_length, store_capacity, "     Welcome to the ABC Store!", NULL, NULL, NULL);
 			}
 		}
 	}
@@ -250,6 +280,8 @@ int main(void)
     // if messages pending, get ok and then send
 	if (message_queue_head != NULL) {
 		if (ready_for_next_message == 1) {
+			tcp_connect();
+		} else if (good_to_get_ok == 1) {
 			get_ok_to_send();
 		} else if (good_for_send == 1) {
 			send_message();
@@ -260,28 +292,69 @@ int main(void)
 	if (people_checking_in > 0) {
 		printf("CHECKING IN\r\n");
 		if (prevent_strobe == 0) {
-			main_display_info(display_handle, num_in_store, queue_length, store_capacity, "     Welcome!", "Place your forehead near the sensor", "at the top of the kiosk", NULL);
+			main_display_info(&hspi1, num_in_store, queue_length, store_capacity, "     Welcome!", "Place your forehead near the sensor", "at the top of the kiosk", NULL);
 			prevent_strobe = 1;
 		}
+		/*
+		//temeprature test
+		while(1){
+			int temp = getTemp();
+			char temp_str[4];
+			sprintf(temp_str, "%d", temp);
+
+//purposeful Tsen manipulation
+			int Tsen = getTsen();
+			Tsen = 30;
+			char temp_str2[4];
+			sprintf(temp_str2, "%d", Tsen);
+
+			int thermopileV = getV();
+			char temp_str3[4];
+			sprintf(temp_str3, "%d", thermopileV);
+
+			int Rsen = getR();
+			char temp_str4[4];
+			sprintf(temp_str4, "%d", Rsen);
+
+			HAL_Delay(2000);
+			main_display_info(&hspi1, num_in_store, queue_length, store_capacity, temp_str,temp_str2 , temp_str3, temp_str4);
+		}
+		//end temperature test
+		*/
 		int temp = getTemp();
+		temp = 36;
 		char temp_str[4];
 		sprintf(temp_str, "%d", temp);
 		if (temp > TEMP_MAX) { // fever
 			printf("TEMPERATURE TOO HIGH\r\n");
-			main_display_info(display_handle, num_in_store, queue_length, store_capacity, temp_str, "TEMPERATURE IS TOO HIGH", "SEEK STAFF ASSISTANCE", NULL);
+			main_display_info(&hspi1, num_in_store, queue_length, store_capacity, temp_str, "TEMPERATURE IS TOO HIGH", "SEEK STAFF ASSISTANCE", NULL);
 			send_tempError(temp);
 			people_checking_in = 0;
+			prevent_strobe = 0;
 		} else if (temp >= TEMP_MIN){ // in bounds
 			printf("TEMPERATURE OK PLEASE ENTER\r\n");
-			main_display_info(display_handle, num_in_store, queue_length, store_capacity, temp_str, "Temperature check ok!", "Enter when ready", NULL);
+			main_display_info(&hspi1, num_in_store, queue_length, store_capacity, temp_str, "Temperature check ok!", "Enter when ready", NULL);
 			++valid_entries;
 			--people_checking_in;
+			prevent_strobe = 0;
 		}
 		if (people_checking_in == 0) {
 			send_doneCheckingIn();
 			prevent_strobe = 0;
 		}
 	}
+
+	/*
+	if (got_unexpected == 1) {
+		int z;
+		for (z = 0; z < 500; ++z) {
+		  printf("%d ", unexpected_return[z]);
+		}
+		got_unexpected = 0;
+	}
+	*/
+
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -613,7 +686,7 @@ static void MX_TIM16_Init(void)
   htim16.Instance = TIM16;
   htim16.Init.Prescaler = 7999;
   htim16.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim16.Init.Period = 4999;
+  htim16.Init.Period = 999;
   htim16.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim16.Init.RepetitionCounter = 0;
   htim16.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
@@ -624,6 +697,38 @@ static void MX_TIM16_Init(void)
   /* USER CODE BEGIN TIM16_Init 2 */
 
   /* USER CODE END TIM16_Init 2 */
+
+}
+
+/**
+  * @brief TIM17 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM17_Init(void)
+{
+
+  /* USER CODE BEGIN TIM17_Init 0 */
+
+  /* USER CODE END TIM17_Init 0 */
+
+  /* USER CODE BEGIN TIM17_Init 1 */
+
+  /* USER CODE END TIM17_Init 1 */
+  htim17.Instance = TIM17;
+  htim17.Init.Prescaler = 7999;
+  htim17.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim17.Init.Period = 4999;
+  htim17.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim17.Init.RepetitionCounter = 0;
+  htim17.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim17) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM17_Init 2 */
+
+  /* USER CODE END TIM17_Init 2 */
 
 }
 
@@ -733,7 +838,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOE, RST_Pin|CS_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOE, SPI_RST_Pin|CS_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : PB2 */
   GPIO_InitStruct.Pin = GPIO_PIN_2;
@@ -742,8 +847,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : RST_Pin CS_Pin */
-  GPIO_InitStruct.Pin = RST_Pin|CS_Pin;
+  /*Configure GPIO pins : SPI_RST_Pin CS_Pin */
+  GPIO_InitStruct.Pin = SPI_RST_Pin|CS_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -771,6 +876,14 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	if (htim == &htim16 ) {
 		printf("GETTING STATUS\r\n");
 		get_status();
+	} else if (htim == &htim17) {
+		if (message_queue_head != NULL) {
+			if (advanced_wifi_state == 0) {
+				advanced_wifi_state == 1;
+			} else {
+				abort_message();
+			}
+		}
 	}
 }
 

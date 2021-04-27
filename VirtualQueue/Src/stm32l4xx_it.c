@@ -58,6 +58,7 @@
 
 /* External variables --------------------------------------------------------*/
 extern TIM_HandleTypeDef htim16;
+extern TIM_HandleTypeDef htim17;
 extern DMA_HandleTypeDef hdma_uart4_rx;
 extern UART_HandleTypeDef huart4;
 extern UART_HandleTypeDef huart2;
@@ -216,6 +217,20 @@ void TIM1_UP_TIM16_IRQHandler(void)
 }
 
 /**
+  * @brief This function handles TIM1 trigger and commutation interrupts and TIM17 global interrupt.
+  */
+void TIM1_TRG_COM_TIM17_IRQHandler(void)
+{
+  /* USER CODE BEGIN TIM1_TRG_COM_TIM17_IRQn 0 */
+
+  /* USER CODE END TIM1_TRG_COM_TIM17_IRQn 0 */
+  HAL_TIM_IRQHandler(&htim17);
+  /* USER CODE BEGIN TIM1_TRG_COM_TIM17_IRQn 1 */
+
+  /* USER CODE END TIM1_TRG_COM_TIM17_IRQn 1 */
+}
+
+/**
   * @brief This function handles USART2 global interrupt.
   */
 void USART2_IRQHandler(void)
@@ -244,27 +259,57 @@ void UART4_IRQHandler(void)
   if(RESET != __HAL_UART_GET_FLAG(&huart4, UART_FLAG_IDLE)) {
   	__HAL_UART_CLEAR_IDLEFLAG(&huart4);
   	HAL_UART_DMAStop(&huart4);
-
-    // determine current state and state to transition to
+  	//main_display_info(display_handle, num_in_store, queue_length, store_capacity, esp_recv_buf, NULL, NULL, NULL);
+//  	debug_print(display_handle, esp_recv_buf);
+  	// determine current state and state to transition to
     // in message transmission process
-  	if (wait_for_send_ok == 1) {
-  		if (strstr(esp_recv_buf, ">") == NULL) { // have not gotten permission to send
-			  HAL_UART_Receive_DMA(esp_huart, esp_recv_buf, 2000);
-			  printf("Not good to send: %s\r\n", esp_recv_buf);
-			  return;
-      } else {
-        wait_for_send_ok = 0;
-        good_for_send = 1;
-      }
+  	if (wait_for_tcp == 1) {
+  		if (strstr(esp_recv_buf, "OK") == NULL && strstr(esp_recv_buf, "ALREADY CONNECTED") == NULL) { // have not made tcp connection
+  			printf("Wait on TCP: %s\r\n", esp_recv_buf);
+  			HAL_UART_Receive_DMA(esp_huart, esp_recv_buf, 2000);
+		    got_unexpected = 1;
+		    memcpy(unexpected_return, esp_recv_buf, 500);
+		} else {
+		  printf("TCP CONNECTED: %s\r\n", esp_recv_buf);
+		  advanced_wifi_state = 0;
+		  got_unexpected = 0;
+		  wait_for_tcp = 0;
+		  good_to_get_ok = 1;
+		}
+  	} else if (wait_for_send_ok == 1) {
+  		int i;
+  		for (i=0; i < 2000; ++i) {
+  			if (esp_recv_buf[i] == '>') {
+  				advanced_wifi_state = 0;
+  				got_unexpected = 0;
+				wait_for_send_ok = 0;
+				good_for_send = 1;
+				return;
+  			}
+  		}
+	    printf("Not good to send: %s\r\n", esp_recv_buf);
+	    got_unexpected = 1;
+	    memcpy(unexpected_return, esp_recv_buf, 500);
+	    HAL_UART_Receive_DMA(esp_huart, esp_recv_buf, 2000);
   	} else if (wait_for_message_response == 1) {
   		if (strstr(esp_recv_buf, "HTTP") == NULL) { // have not gotten actual server response
-        HAL_UART_Receive_DMA(esp_huart, esp_recv_buf, 2000);
-        printf("Not real response: %s\r\n", esp_recv_buf);
-        return;
-      } else {
-        wait_for_message_response = 0;
-        message_pending_handling = 1;
-      }
+  		  if (strstr(esp_recv_buf, "Recv") != NULL && strstr(esp_recv_buf, "bytes") == NULL) {
+  			printf("ABORTING MESSAGE - INCOMPLETE ACK\r\n");
+  			abort_message();
+  			return;
+  		  } else {
+  			got_unexpected = 1;
+  			memcpy(unexpected_return, esp_recv_buf, 500);
+  			HAL_UART_Receive_DMA(esp_huart, esp_recv_buf, 2000);
+  		  }
+        } else {
+          advanced_wifi_state = 0;
+    	  got_unexpected = 0;
+          wait_for_message_response = 0;
+          message_pending_handling = 1;
+        }
+  	} else {
+  		printf("ERROR: in inaccessbile state\r\n");
   	}
   }
   /* USER CODE END UART4_IRQn 1 */

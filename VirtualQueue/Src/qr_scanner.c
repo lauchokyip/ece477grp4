@@ -35,7 +35,7 @@ void qr_scan_received(void) {
 	char qr_to_send[QR_SIZE];
 	memcpy(qr_to_send, qr_buf, QR_SIZE);
 	qr_scan_pending = 0;
-	//main_display_info(display_handle, num_in_store, queue_length, store_capacity, "QR SCAN", qr_to_send, NULL, NULL);
+	main_display_info(display_handle, num_in_store, queue_length, store_capacity, "QR SCAN", qr_to_send, NULL, NULL);
 
 	// add qr scan to wifi queue and reset buffer
 	send_qr_scan(qr_to_send);
@@ -48,6 +48,7 @@ void send_qr_scan(char* qr_code) {
 	uint8_t url[SCAN_URL_LEN + QR_SIZE-1];
 	char url_str[SCAN_URL_LEN + QR_SIZE-1];
 	sprintf(url_str, "https://virtualqueue477.herokuapp.com/barcodeScan?storeSecret=grp4&IDscanned=%s", qr_code);
+	main_display_info(display_handle, num_in_store, queue_length, store_capacity, url_str, NULL, NULL, NULL);
 	printf("url_str: %s\r\n\r\n", url_str);
 	str_to_uint(url_str, url, SCAN_URL_LEN+QR_SIZE-1);
 	printf("url: %s\r\n\r\n", url);

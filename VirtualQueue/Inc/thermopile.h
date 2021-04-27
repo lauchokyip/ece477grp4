@@ -21,6 +21,7 @@ uint32_t ee;   //emissivity of object (x 100)
 //uint32_t dirac;   //correction for filter transmission
 uint32_t Tobj;
 uint32_t factor; //factor for temperature scaling
+uint32_t dirac_scale;
 
 uint16_t raw;
 uint16_t raw2;
@@ -30,5 +31,8 @@ ADC_HandleTypeDef hadc2;
 
 void thermopile_init();
 int getTemp();
+int getTsen();
+int getV();
+int getR();
 
 #endif
