@@ -298,8 +298,6 @@ void UART4_IRQHandler(void)
   			abort_message();
   			return;
   		  } else {
-  			got_unexpected = 1;
-  			memcpy(unexpected_return, esp_recv_buf, 500);
   			HAL_UART_Receive_DMA(esp_huart, esp_recv_buf, 2000);
   		  }
         } else {

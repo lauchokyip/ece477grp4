@@ -287,11 +287,7 @@ void handle_message_response() {
 		char error[19];
 		sprintf(error, "ERROR: HTTP FAIL %d", m->type);
 		main_display_info(display_handle, num_in_store, queue_length, store_capacity, "AN ERROR HAS OCCURRED", error, esp_recv_buf, NULL);
-		message_queue_head = message_queue_head->next;
-		free(m->url);
-		free(m);
-		message_pending_handling = 0;
-		ready_for_next_message = 1;
+		abort_message();
 		return;
 	}
 
@@ -305,11 +301,7 @@ void handle_message_response() {
 		char error[18];
 		sprintf(error, "ERROR: JSON DNE %d", m->type);
 		main_display_info(display_handle, num_in_store, queue_length, store_capacity, "AN ERROR HAS OCCURRED", error, NULL, NULL);
-		message_queue_head = message_queue_head->next;
-		free(m->url);
-		free(m);
-		message_pending_handling = 0;
-		ready_for_next_message = 1;
+		abort_message();
 		return;
 	}
 	char json[json_len+1];

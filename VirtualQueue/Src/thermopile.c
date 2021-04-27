@@ -37,11 +37,31 @@ int getTemp() {
 		thermopileV = 0;
 	}
 	else {
-		thermopileV = (thermopileV_raw - factor) / 3.0;  //mV * some scaling, 3.0 can change up or down to scale Tobj
+		thermopileV = (thermopileV_raw - factor) / 2.9f;  //mV * some scaling, 3.0 can change up or down to scale Tobj
 	}
-	Tsen = 30;
-	dirac_scale = (Tsen - 22) * 2;
-	Tobj = pow(      ((thermopileV * 1000) / (s * ee)) + pow(Tsen, 4 - 2.4 - dirac_scale / 100.0f)       ,        1.0f / (4 - 2.4 - dirac_scale / 100.0f)     );   //dirac constant (subtracted from 4) to be changed accordingly; bigger dirac = higher temperature
+
+	//test value logic: ignore for final
+	//Tsen = 30;
+
+	//thermopile tuned logic
+	if(Tsen >= 21){
+		dirac_scale = 2460 - (Tsen - 22) * 20; // works for Tsen = 20, 25, 30, 32, 34
+	}
+	else if(Tsen < 21 && Tsen > 15){
+		dirac_scale = 2460 - (Tsen - 22) * 9;//
+	}
+	else if(Tsen <= 15 && Tsen >= 5) {
+		dirac_scale = 2460 - (Tsen - 22) * 7; //
+	}
+	else {
+		dirac_scale = 2460 - (Tsen - 22) * 8;
+	}
+	Tobj = pow(      ((thermopileV * 1000) / (s * ee)) + pow(Tsen, 4 - dirac_scale / 1000.0f)       ,        1.0f / (4 - dirac_scale / 1000.0f)     );
+	//
+
+	//old version
+	//dirac_scale = (Tsen - 22) * 2;
+	//Tobj = pow(      ((thermopileV * 1000) / (s * ee)) + pow(Tsen, 4 - 2.4 - dirac_scale / 100.0f)       ,        1.0f / (4 - 2.4 - dirac_scale / 100.0f)     );   //dirac constant (subtracted from 4) to be changed accordingly; bigger dirac = higher temperature
 	return Tobj;
 }
 

@@ -293,6 +293,7 @@ int main(void)
 		printf("CHECKING IN\r\n");
 		if (prevent_strobe == 0) {
 			main_display_info(&hspi1, num_in_store, queue_length, store_capacity, "     Welcome!", "Place your forehead near the sensor", "at the top of the kiosk", NULL);
+			HAL_Delay(3000);
 			prevent_strobe = 1;
 		}
 		/*
@@ -321,8 +322,14 @@ int main(void)
 		}
 		//end temperature test
 		*/
+
+		//stores temperature values
 		int temp = getTemp();
-		temp = 36;
+		int tsen = getTsen();
+		int rsen = getR();
+		int vol = getV();
+
+		//temp = 36;
 		char temp_str[4];
 		sprintf(temp_str, "%d", temp);
 		if (temp > TEMP_MAX) { // fever
@@ -334,6 +341,7 @@ int main(void)
 		} else if (temp >= TEMP_MIN){ // in bounds
 			printf("TEMPERATURE OK PLEASE ENTER\r\n");
 			main_display_info(&hspi1, num_in_store, queue_length, store_capacity, temp_str, "Temperature check ok!", "Enter when ready", NULL);
+			HAL_Delay(1000);
 			++valid_entries;
 			--people_checking_in;
 			prevent_strobe = 0;
@@ -879,7 +887,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	} else if (htim == &htim17) {
 		if (message_queue_head != NULL) {
 			if (advanced_wifi_state == 0) {
-				advanced_wifi_state == 1;
+				advanced_wifi_state = 1;
 			} else {
 				abort_message();
 			}
