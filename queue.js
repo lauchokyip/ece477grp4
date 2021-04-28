@@ -1,8 +1,10 @@
-const queue = [];
 const store = require("./store.js");
 const universalEmitter = require("./universalEmitter.js");
 
 const TIME_TO_ENTER = 5 * 60 * 1000;
+
+var IDLE = true;
+const queue = [];
 
 /**
  * customerIndexOnQueue will check if the customer is on Queue or not
@@ -125,6 +127,7 @@ function deleteCustomerWithID(customerID) {
 }
 
 function checkInCustomer() {
+    IDLE = false;
     clearTimeout(checkInTimeout);
     return deleteCustomerAtIndex(0)[0];
 }
@@ -133,6 +136,7 @@ universalEmitter.on("leftStore", canCheckInHandler);
 universalEmitter.on("queueChange", canCheckInHandler);
 universalEmitter.on("queueFirstRemoved", canCheckInHandler);
 universalEmitter.on("numPeopleCapacityChange", canCheckInHandler);
+universalEmitter.on("setIDLE", canCheckInHandler);
 function canCheckInHandler() {
     if (firstCustomerCanEnter()) {
         startCheckIn();
@@ -182,7 +186,7 @@ function firstCustomerCanEnter() {
     if (queue.length === 0) {
         return false;
     }
-    return store.isAllowToEnterStore(queue[0].customer.numPeople);
+    return store.isAllowToEnterStore(queue[0].customer.numPeople) && IDLE;
 }
 
 function length() {
@@ -195,6 +199,11 @@ function get(index) {
         return undefined;
     }
     return queue[index];
+}
+
+function setIDLE() {
+    IDLE = true;
+    universalEmitter.emit("setIDLE");
 }
 
 function getFullQueue() {
@@ -230,4 +239,5 @@ module.exports = {
     getSubcriptionObj,
     getAllSubcriptionObj,
     print,
+    setIDLE,
 };

@@ -83,7 +83,7 @@ Response:
 
 --------------------------------------------------------------------------------
 When an out of bounds temperature is detected
-/tempError?storeSecret=<store secret>
+/tempError?storeSecret=<store secret>&temp=<temperature scanned>
 
 Response:
 {
@@ -108,4 +108,11 @@ To get the status to display to the screen
     queueLength: <queue length>,
     numPeopleInStore: <number of people in the store>,
     maxCapacity: <max capacity of people>,
+}
+
+--------------------------------------------------------------------------------
+To get notify the webserver when the check in process is done.
+/checkInDone?storeSecret=<store secret>&temp=<temperature scanned>
+{
+    ok: true,
 }

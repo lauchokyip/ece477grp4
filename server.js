@@ -11,6 +11,7 @@ const queue = require("./queue.js");
 const notification = require("./notification");
 const customerHelper = require("./helper/customerHelper.js");
 const store = require("./store.js");
+const errorMgmt = require("./errorMgmt.js");
 
 const PORT = process.env.PORT || 3001;
 const app = express();
@@ -22,7 +23,7 @@ const universalEmitter = require("./universalEmitter.js");
 
 //variables
 const STORE_SECRET = "grp4";
-const circumvent = false;
+const circumvent = true;
 
 // middleware
 app.use(express.static("public"));
@@ -33,7 +34,6 @@ app.use(bodyParser.json());
 app.set("view engine", "ejs");
 
 io.sockets.on("connection", serverSocket.connection);
-// TODO: Need an API to set up the store capacity
 
 // -----------------PAGE REQUESTS----------------------x
 app.get("/", (req, res) => {
@@ -215,7 +215,8 @@ app.get("/barcodeScan", (req, res) => {
             res.status(200);
             res.json(store.enteringResponse(customer));
 
-            console.log("Customer entering the queue", checkedInQueueSpot);
+            console.log("Customer entering the store", checkedInQueueSpot);
+            console.log("Check in has started");
             serverSocket.checkedIn(io, checkedInQueueSpot.socketID);
         } else {
             console.log(`Customer is trying entering the store.`, customer);
@@ -227,7 +228,7 @@ app.get("/barcodeScan", (req, res) => {
         const potenID = id;
         if (!potentialQueue.exists(potenID)) {
             console.log("BAD ID");
-            res.status(404);
+            res.status(200);
             res.json(store.errorResponse());
             return;
         }
@@ -242,6 +243,11 @@ app.get("/barcodeScan", (req, res) => {
             queue.length() == 0 &&
             store.isAllowToEnterStore(customer.numPeople)
         ) {
+            console.log(
+                `Customer is being let into the store without joining the queue.`,
+                customer
+            );
+            console.log("Check in has started");
             res.status(200);
             res.json(store.enteringResponse(customer));
 
@@ -250,6 +256,7 @@ app.get("/barcodeScan", (req, res) => {
         }
 
         queue.addCustomerToQueue(customer);
+        console.log(`Customer has joined the queue.`, customer);
 
         serverSocket.moveToQueue(io, socketID, customer);
         res.status(200);
@@ -269,6 +276,7 @@ app.get("/leftStore", (req, res) => {
     }
     res.status(200);
     res.json({ ok: true });
+    console.log(`Someone left the store.`);
 
     store.leftStore();
 });
@@ -284,12 +292,14 @@ app.get("/enteredStore", (req, res) => {
 
     res.status(200);
     res.json({ ok: true });
+    console.log(`Someone entered the store.`);
 
     store.enteredStore();
 });
 
 app.get("/tempError", (req, res) => {
     const storeSecret = req.query.storeSecret;
+    const temp = req.query.temp;
     if (storeSecret.localeCompare(STORE_SECRET)) {
         console.log("BAD SECRET");
         res.status(401);
@@ -297,8 +307,8 @@ app.get("/tempError", (req, res) => {
         return;
     }
 
-    // TODO: Alert the console
-
+    errorMgmt.putTemp(temp);
+    console.log(`Someone had a wrong temp.`);
     res.status(200);
     res.json({ ok: true });
 });
@@ -312,7 +322,8 @@ app.get("/unauthorizedEntry", (req, res) => {
         return;
     }
 
-    // TODO: Alert the console
+    errorMgmt.putEntry();
+    console.log(`Someone entered without authorization.`);
 
     res.status(200);
     res.json({ ok: true });
@@ -334,6 +345,22 @@ app.get("/getStatus", (req, res) => {
         numPeopleInStore: store.getNumPeople(),
         maxCapacity: store.getMaxCapacity(),
     });
+});
+
+app.get("/checkInDone", (req, res) => {
+    const storeSecret = req.query.storeSecret;
+    if (storeSecret.localeCompare(STORE_SECRET)) {
+        console.log("BAD SECRET");
+        res.status(401);
+        res.json({ ok: false });
+        return;
+    }
+    console.log(`Check in finished`);
+
+    queue.setIDLE();
+
+    res.status(200);
+    res.json({ ok: true });
 });
 
 // ----------------------------------------------------x
@@ -390,6 +417,46 @@ app.post("/getStatusConsole", (req, res) => {
         maxCapacity: store.getMaxCapacity(),
         numPeople: store.getNumPeople(),
         queue: queue.getFullQueue(),
+        unauthorizedEntries: errorMgmt.getFullEntry(),
+        tempErrors: errorMgmt.getFullTemp(),
+    });
+});
+
+app.post("/removeTempError", (req, res) => {
+    const data = req.body;
+    const sessionKey = data.sessionKey;
+
+    if (!SESSION_KEY || sessionKey != SESSION_KEY) {
+        res.status(401);
+        res.json({});
+        return;
+    }
+
+    const index = data.removeIndex;
+    errorMgmt.removeTemp(index);
+
+    res.status(200);
+    res.json({
+        success: true,
+    });
+});
+
+app.post("/removeUnauthorizedEntry", (req, res) => {
+    const data = req.body;
+    const sessionKey = data.sessionKey;
+
+    if (!SESSION_KEY || sessionKey != SESSION_KEY) {
+        res.status(401);
+        res.json({});
+        return;
+    }
+
+    const index = data.removeIndex;
+    errorMgmt.removeEntry(index);
+
+    res.status(200);
+    res.json({
+        success: true,
     });
 });
 
