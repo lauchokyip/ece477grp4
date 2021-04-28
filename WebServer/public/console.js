@@ -16,6 +16,11 @@ const txtNewNumPeople = document.getElementById("txtNewNumPeople");
 const btnSetNumPeople = document.getElementById("btnSetNumPeople");
 const setNumPeopleErrorText = document.getElementById("setNumPeopleErrorText");
 
+const tblUnauthorizedEntries = document.getElementById(
+    "tblUnauthorizedEntries"
+);
+const tblTempErrors = document.getElementById("tblTempErrors");
+
 btnSetMaxCapacity.addEventListener("click", async function () {
     setMaxCapacityErrorText.innerHTML = "";
     var val = txtNewMaxCapacity.value;
@@ -131,17 +136,131 @@ function displayStatus() {
     maxCapacityText.innerHTML = systemStatus.maxCapacity;
     numPeopleText.innerHTML = systemStatus.numPeople;
     queueLenText.innerHTML = systemStatus.queue.length;
+    displayEntryTable(systemStatus.unauthorizedEntries);
+    displayTempTable(systemStatus.tempErrors);
+}
+
+function displayEntryTable(unauthorizedEntries) {
+    var keyArr = ["time"];
+    unauthorizedEntries.forEach((elem) => {
+        elem.time = _getTimeStr(elem.timestamp);
+    });
+
+    async function removeFunc() {
+        var index = this.index;
+        const data = {
+            sessionKey,
+            removeIndex: index,
+        };
+        const options = {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(data),
+        };
+
+        const response = await fetch("/removeUnauthorizedEntry", options);
+        if (response.status != 200) {
+            alert("Unauthorized access.");
+            window.location.href = "/consoleLogin";
+            return;
+        }
+    }
+
+    displayTable(
+        tblUnauthorizedEntries,
+        keyArr,
+        unauthorizedEntries,
+        removeFunc
+    );
+}
+
+function displayTempTable(tempErrors) {
+    var keyArr = ["temp", "time"];
+    tempErrors.forEach((elem) => {
+        elem.time = _getTimeStr(elem.timestamp);
+    });
+
+    async function removeFunc() {
+        var index = this.index;
+        const data = {
+            sessionKey,
+            removeIndex: index,
+        };
+        const options = {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(data),
+        };
+
+        const response = await fetch("/removeTempError", options);
+        if (response.status != 200) {
+            alert("Unauthorized access.");
+            window.location.href = "/consoleLogin";
+            return;
+        }
+    }
+
+    displayTable(tblTempErrors, keyArr, tempErrors, removeFunc);
+}
+
+function displayTable(tblElem, keyArr, objArr, removeFunc) {
+    while (tblElem.children.length !== 1) {
+        tblElem.deleteRow(1);
+    }
+    var i = objArr.length + 1;
+    var index = 0;
+    objArr.forEach((obj) => {
+        i -= 1;
+        var row = document.createElement("tr");
+
+        var cell = document.createElement("td");
+        cell.innerText = i;
+        row.append(cell);
+
+        keyArr.forEach((key) => {
+            var cell = document.createElement("td");
+            cell.innerText = obj[key];
+            row.append(cell);
+        });
+
+        var cell = document.createElement("td");
+        var btn = document.createElement("input");
+        btn.type = "button";
+        btn.value = "Dismiss";
+        // btn.classList = "dismiss ";
+        btn.index = index;
+        btn.addEventListener("click", removeFunc);
+        cell.append(btn);
+        row.append(cell);
+
+        tblElem.append(row);
+        index += 1;
+    });
+}
+
+function _getTimeStr(timestamp) {
+    var ts = new Date(timestamp);
+    var str = ts.toLocaleTimeString();
+    // var patt = /[0-9]+:[0-9]+(:[0-9]+) /i;
+    // var result = str.match(patt);
+    // str = str.replace(result[1], "");
+
+    return str;
+}
+
+async function update() {
+    await getStatus();
+    displayStatus();
 }
 
 socket.on("consoleUpdate", function () {
     console.log("Console Update");
     update();
 });
-
-async function update() {
-    await getStatus();
-    displayStatus();
-}
 
 async function verify() {
     const data = {
