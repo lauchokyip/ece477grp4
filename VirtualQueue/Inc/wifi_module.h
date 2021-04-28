@@ -12,6 +12,7 @@
 
 #define SEND_CMD_LEN 13
 #define GET_LEN 78
+#define TEMP_LEN 70
 
 // Used to construct a queue of pending messages to send over WiFi
 typedef struct WifiMessage {
@@ -31,9 +32,17 @@ extern int queue_length;
 extern int store_capacity;
 extern int num_in_store;
 extern int valid_entries;
+extern int wait_for_tcp;
+extern int good_to_get_ok;
+extern int people_checking_in;
+extern int wait_tcp_close;
+extern int close_tcp;
+extern uint8_t unexpected_return[500];
+extern int got_unexpected;
+extern int advanced_wifi_state;
 extern UART_HandleTypeDef *esp_huart;
 
-WifiMessage* message_queue_head; // head of message queue
+extern WifiMessage* message_queue_head; // head of message queue
 SPI_HandleTypeDef* display_handle;
 
 bool esp8266_init(UART_HandleTypeDef*, SPI_HandleTypeDef*, int, int);
@@ -46,5 +55,9 @@ void send_exit();
 void get_status();
 void send_tempError();
 void send_unauthorizedEntry();
+void send_doneCheckingIn();
+void tcp_connect();
+void tcp_close();
+void abort_message();
 
 #endif

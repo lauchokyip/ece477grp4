@@ -239,3 +239,4 @@ void set_text_color(SPI_HandleTypeDef *hspi, uint16_t text_color);
 void enlarge_text(SPI_HandleTypeDef *hspi, uint8_t zoom);
 void main_display_init(SPI_HandleTypeDef *hspi);
 void main_display_info(SPI_HandleTypeDef *hspi, int num_people_in_store, int num_people_in_queue, int max_capacity, char *msg1, char* msg2, char* msg3, char* msg4);
+void debug_print(SPI_HandleTypeDef *hspi, char* str);
