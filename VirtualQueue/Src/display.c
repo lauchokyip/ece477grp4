@@ -646,7 +646,7 @@ void main_display_info(SPI_HandleTypeDef *hspi, int num_people_in_store, int num
 	set_cursor(hspi, 15, 20);
 	text_write(hspi, buffer, strlen(buffer)); // Write the string to the display
 
-	sprintf(buffer, "     Number of people on queue: %d", num_people_in_queue);
+	sprintf(buffer, "     Number of groups in queue: %d", num_people_in_queue);
 	set_cursor(hspi, 15, 55);
 	text_write(hspi, buffer, strlen(buffer)); // Write the string to the display
 

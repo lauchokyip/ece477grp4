@@ -45,7 +45,7 @@ int getTemp() {
 
 	//thermopile tuned logic
 	if(Tsen >= 21){
-		dirac_scale = 2460 - (Tsen - 22) * 20; // works for Tsen = 20, 25, 30, 32, 34
+		dirac_scale = 2490 - (Tsen - 22) * 20; // works for Tsen = 20, 25, 30, 32, 34
 	}
 	else if(Tsen < 21 && Tsen > 15){
 		dirac_scale = 2460 - (Tsen - 22) * 9;//

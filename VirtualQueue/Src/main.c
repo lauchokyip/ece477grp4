@@ -157,7 +157,7 @@ int main(void)
 
   bool motion_sensor_ok = initialize_motion_sensor(&hi2c1);
   if (motion_sensor_ok != true) {
-	  main_display_info(&hspi1, num_in_store, queue_length, store_capacity, "motion sensor fails", NULL, NULL, NULL);
+	  main_display_info(&hspi1, num_in_store, queue_length, store_capacity, "ERROR: MOTION SENSOR SETUP FAIL", NULL, NULL, NULL);
 	  return 1;
   }
 
@@ -251,7 +251,7 @@ int main(void)
 			if (valid_entries > 0) {
 				send_entry();
 				--valid_entries;
-				main_display_info(&hspi1, num_in_store, queue_length, store_capacity, "     Welcome to the ABC Store!", "Please wait to enter...", NULL, NULL);
+				main_display_info(&hspi1, num_in_store, queue_length, store_capacity, "Entry Detected. Welcome!", "Please wait...", NULL, NULL);
 			} else {
 				send_unauthorizedEntry();
 				main_display_info(&hspi1, num_in_store, queue_length, store_capacity, "WARNING:", "UNAUTHORIZED ENTRY", NULL, NULL);
@@ -261,13 +261,13 @@ int main(void)
 			printf("SEND RIGHT\r\n");
 			send_exit();
 			send_enable = false;
-			main_display_info(&hspi1, num_in_store, queue_length, store_capacity, "     Welcome to the ABC Store!", "Please wait to enter...", NULL, NULL);
+			main_display_info(&hspi1, num_in_store, queue_length, store_capacity, "Exit Detected. Thanks!", "Please wait...", NULL, NULL);
 		} else if (right < threshold && left < threshold) {
             // if both motion types below threshold, enable sending
 			if (!send_enable) {
 				printf("SEND ENABLE\r\n");
 				send_enable = true;
-				main_display_info(&hspi1, num_in_store, queue_length, store_capacity, "     Welcome to the ABC Store!", NULL, NULL, NULL);
+				main_display_info(&hspi1, num_in_store, queue_length, store_capacity, "Welcome to the ABC Store!", NULL, NULL, NULL);
 			}
 		}
 	}
@@ -292,7 +292,7 @@ int main(void)
 	if (people_checking_in > 0) {
 		printf("CHECKING IN\r\n");
 		if (prevent_strobe == 0) {
-			main_display_info(&hspi1, num_in_store, queue_length, store_capacity, "     Welcome!", "Place your forehead near the sensor", "at the top of the kiosk", NULL);
+			main_display_info(&hspi1, num_in_store, queue_length, store_capacity, "Welcome,", checking_in_name, "Place your forehead near the sensor", "at the top of the kiosk");
 			HAL_Delay(3000);
 			prevent_strobe = 1;
 		}
@@ -325,13 +325,14 @@ int main(void)
 
 		//stores temperature values
 		int temp = getTemp();
+		char temp_str[14];
+		sprintf(temp_str, "%d degrees C", temp);
+
 		int tsen = getTsen();
 		int rsen = getR();
 		int vol = getV();
 
 		//temp = 36;
-		char temp_str[4];
-		sprintf(temp_str, "%d", temp);
 		if (temp > TEMP_MAX) { // fever
 			printf("TEMPERATURE TOO HIGH\r\n");
 			main_display_info(&hspi1, num_in_store, queue_length, store_capacity, temp_str, "TEMPERATURE IS TOO HIGH", "SEEK STAFF ASSISTANCE", NULL);
@@ -347,6 +348,7 @@ int main(void)
 			prevent_strobe = 0;
 		}
 		if (people_checking_in == 0) {
+			memset(checking_in_name, 0, JSON_ITEM_MAX_SIZE);
 			send_doneCheckingIn();
 			prevent_strobe = 0;
 		}

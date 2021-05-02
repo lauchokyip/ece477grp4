@@ -40,6 +40,7 @@ extern int close_tcp;
 extern uint8_t unexpected_return[500];
 extern int got_unexpected;
 extern int advanced_wifi_state;
+extern char checking_in_name[JSON_ITEM_MAX_SIZE];
 extern UART_HandleTypeDef *esp_huart;
 
 extern WifiMessage* message_queue_head; // head of message queue

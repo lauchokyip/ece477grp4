@@ -38,6 +38,7 @@ int no_strobe; //prevents strobe
 uint8_t unexpected_return[500];
 int got_unexpected;
 int advanced_wifi_state;
+char checking_in_name[JSON_ITEM_MAX_SIZE];
 
 WifiMessage* message_queue_head;
 UART_HandleTypeDef *esp_huart; // UART handle to ESP
@@ -322,9 +323,10 @@ void handle_message_response() {
 			print_out_barcode_msg(parsed_message);
 			if (parsed_message->isCheckingIn == true) { // take temps
 				people_checking_in += parsed_message->customer.numPeople;
+				memcpy(checking_in_name, parsed_message->customer.name, strlen(parsed_message->customer.name));
 			} else if (parsed_message->customer.numPeople == 0) { // can only occur on first scan
 				printf("FIRST SCAN, WELCOME TO QUEUE\r\n");
-				main_display_info(display_handle, num_in_store, queue_length, store_capacity, "     Welcome to the ABC Store!", "You are now in the Virtual Queue!", NULL, NULL);
+				main_display_info(display_handle, num_in_store, queue_length, store_capacity, "Welcome to the ABC Store!", "You are now in the Virtual Queue!", NULL, NULL);
 			} else {
 				printf("NOT YOUR TURN\r\n");
 				main_display_info(display_handle, num_in_store, queue_length, store_capacity, "Sorry,", parsed_message->customer.name, "It is not your turn to enter.", "Check your device for your place in the queue.");
@@ -357,7 +359,7 @@ void handle_message_response() {
 				queue_length = parsed_message->queueLength;
 				num_in_store = parsed_message->numPeopleInStore;
 				store_capacity = parsed_message->maxCapacity;
-				main_display_info(display_handle, num_in_store, queue_length, store_capacity, "     Welcome to ABC store!", NULL, NULL, NULL);
+				main_display_info(display_handle, num_in_store, queue_length, store_capacity, "Welcome to the ABC store!", NULL, NULL, NULL);
 			}
 			free(parsed_message);
 		}
