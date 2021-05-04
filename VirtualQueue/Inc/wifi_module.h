@@ -16,7 +16,7 @@
 
 // Used to construct a queue of pending messages to send over WiFi
 typedef struct WifiMessage {
-	int type; // type of message: 1=QR scan, 2=entry,exit,tempError,unauthEntry, 4=getStatus
+	int type; // type of message: 1=QR scan, 2=entry,exit,tempError,unauthEntry, 3=getStatus
 	uint8_t* url; // url of message to send
 	int url_len; // length of url
 	struct WifiMessage *next; // next message in queue

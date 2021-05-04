@@ -296,32 +296,6 @@ int main(void)
 			HAL_Delay(3000);
 			prevent_strobe = 1;
 		}
-		/*
-		//temeprature test
-		while(1){
-			int temp = getTemp();
-			char temp_str[4];
-			sprintf(temp_str, "%d", temp);
-
-//purposeful Tsen manipulation
-			int Tsen = getTsen();
-			Tsen = 30;
-			char temp_str2[4];
-			sprintf(temp_str2, "%d", Tsen);
-
-			int thermopileV = getV();
-			char temp_str3[4];
-			sprintf(temp_str3, "%d", thermopileV);
-
-			int Rsen = getR();
-			char temp_str4[4];
-			sprintf(temp_str4, "%d", Rsen);
-
-			HAL_Delay(2000);
-			main_display_info(&hspi1, num_in_store, queue_length, store_capacity, temp_str,temp_str2 , temp_str3, temp_str4);
-		}
-		//end temperature test
-		*/
 
 		//stores temperature values
 		int temp = getTemp();
@@ -332,7 +306,6 @@ int main(void)
 		int rsen = getR();
 		int vol = getV();
 
-		//temp = 36;
 		if (temp > TEMP_MAX) { // fever
 			printf("TEMPERATURE TOO HIGH\r\n");
 			main_display_info(&hspi1, num_in_store, queue_length, store_capacity, temp_str, "TEMPERATURE IS TOO HIGH", "SEEK STAFF ASSISTANCE", NULL);

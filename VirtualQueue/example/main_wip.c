@@ -15,8 +15,6 @@
   *                        opensource.org/licenses/BSD-3-Clause
   *
   ******************************************************************************
-  This is the "clean" version being built towards the final product. The regular
-  main.c is more of a testing/unclean version.
   */
 /* USER CODE END Header */
 
